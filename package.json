@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@astrojs/mdx": "^6.0.2"
+  }
+}

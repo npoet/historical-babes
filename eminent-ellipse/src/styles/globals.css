@@ -1,0 +1,165 @@
+:root {
+  font-size: 16px;
+
+  --color-text: #24112f;
+  --color-text-alt: #78698a;
+  --color-faded: #c9c9c9;
+
+  --color-bg: #ffffff;
+  --color-placeholder: #fff4fa;
+
+  --color-link: #ff2f92;
+  --color-link-hover: #c61cff;
+
+  --color-pink: #ff2f92;
+  --color-magenta: #d81bff;
+  --color-purple: #7b2cff;
+  --color-red: #ff4d61;
+
+  --border-color: rgba(255, 47, 146, 0.15);
+
+  --font-size-s: 0.85rem;
+  --font-size-l: clamp(1.25rem, 3vw, 1.75rem);
+  --font-size-xl: clamp(2rem, 6vw, 5rem);
+
+  --site-width: 1800px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0 1rem;
+
+  color: var(--color-text);
+  background-color: var(--color-bg);
+
+  line-height: 1;
+
+  font-family:
+    "Instrument Sans Variable",
+    Inter,
+    system-ui,
+    sans-serif;
+
+  font-variant-ligatures: none;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.blurred {
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  text-decoration: none;
+  color: var(--color-link);
+
+  outline: none;
+  cursor: pointer;
+
+  transition:
+    color 0.3s ease,
+    opacity 0.3s ease;
+}
+
+a:hover {
+  color: var(--color-link-hover);
+}
+
+a:focus-visible {
+  opacity: 0.75;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+
+  color: inherit;
+  font: inherit;
+
+  cursor: pointer;
+}
+
+button:hover {
+  color: var(--color-link-hover);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+}
+
+h2 {
+  font-size: var(--font-size-xl);
+  line-height: 0.85;
+}
+
+h3 {
+  margin-bottom: 2rem;
+  font-size: 1rem;
+}
+
+p + h3 {
+  margin-top: 4rem;
+}
+
+.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fade-in {
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+.fade-in.loaded {
+  opacity: 1;
+}
+
+.faded {
+  color: var(--color-faded);
+}
+
+.inline {
+  display: flex;
+  gap: 1rem;
+}
+
+.sr-only {
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  padding: 0;
+  margin: -1px;
+
+  overflow: hidden;
+
+  clip: rect(0, 0, 0, 0);
+
+  white-space: nowrap;
+  border: 0;
+}

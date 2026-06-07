@@ -1,0 +1,103 @@
+.figure-grid {
+  position: relative;
+
+  display: grid;
+  width: 100%;
+
+  margin: 2rem 0 8rem;
+
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media screen and (min-width: 30em) {
+  .figure-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media screen and (min-width: 50em) {
+  .figure-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+.figure-card {
+  display: block;
+  color: inherit;
+}
+
+.figure-image {
+  overflow: hidden;
+
+  aspect-ratio: 3 / 4;
+
+  background: var(--color-placeholder);
+}
+
+.figure-image img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  transition:
+    transform 0.45s ease,
+    filter 0.45s ease;
+}
+
+.figure-card:hover .figure-image img {
+  transform: scale(1.05);
+  filter: saturate(1.15);
+}
+
+.figure-info {
+  padding: 0.75rem 0 1.25rem;
+}
+
+.figure-info h2 {
+  margin: 0 0 0.35rem;
+
+  font-size: 0.95rem;
+  line-height: 1.1;
+}
+
+.figure-info span {
+  display: block;
+
+  color: var(--color-text-alt);
+
+  font-size: 0.8rem;
+}
+
+.works,
+.references {
+  line-height: 1.5;
+}
+
+.works ul,
+.references ul {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.references li + li,
+.works li + li {
+  margin-top: 0.5rem;
+}
+
+.main-nav {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.hero {
+  padding: 0 0 3rem;
+  max-width: 800px;
+}
+
+.hero p {
+  line-height: 1.5;
+  color: var(--color-text-alt);
+}

@@ -1,0 +1,62 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const figures = await getCollection("figures");
+
+figures.sort((a, b) =>
+  a.data.name.localeCompare(b.data.name)
+);
+---
+
+<BaseLayout title="Historical Babes">
+  <header class="title-header">
+    <div class="logo-slot">
+      <!-- future logo -->
+    </div>
+
+    <h1>
+      Historical
+      <span class="hero-accent">Babes</span>
+    </h1>
+
+    <nav class="main-nav">
+      <a href="/">Home</a>
+      <a href="/timeline">Timeline</a>
+      <a href="/about">About</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <p>
+      Historical Babes celebrates the women who have shaped our world. From renowned pioneers to forgotten trailblazers, we explore the lives, achievements, and legacies of women whose contributions have left a lasting mark on society, the sciences, the arts, and beyond.
+    </p>
+  </section>
+
+  <section class="figure-grid">
+    {figures.map((figure) => (
+      <a
+        href={`/${figure.id}`}
+        class="figure-card"
+      >
+        <div class="figure-image">
+          <img
+            src={figure.data.image.src}
+            alt={figure.data.image.alt}
+            loading="lazy"
+          />
+        </div>
+
+        <div class="figure-info">
+          <h3>{figure.data.name}</h3>
+
+          {
+            figure.data.lifespan && (
+              <span>{figure.data.lifespan}</span>
+            )
+          }
+        </div>
+      </a>
+    ))}
+  </section>
+</BaseLayout>
