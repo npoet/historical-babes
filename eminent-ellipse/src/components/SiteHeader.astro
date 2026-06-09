@@ -3,12 +3,17 @@ import ThemeToggle from "./ThemeToggle.astro";
 ---
 
 <header class="title-header">
+    <div class="header-row">
      <h1 class="site-title">
         <a href="/">
           Historical
           <span class="hero-accent">Babes</span>
         </a>
       </h1>
+
+      <div>
+        <ThemeToggle />
+    </div>
 
      <button
         id="mobile-menu-toggle"
@@ -18,15 +23,15 @@ import ThemeToggle from "./ThemeToggle.astro";
         ☰
       </button>
 
+
+
     <nav class="main-nav" id="main-nav">
       <a href="/">Home</a>
       <a href="/all">All Babes</a>
     </nav>
 
-    <div>
-        <ThemeToggle />
-    </div>
 
+</div>
 </header>
 
 <script>
