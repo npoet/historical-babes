@@ -268,3 +268,9 @@ p + h3 {
   width: 24px;
   height: 24px;
 }
+
+.footer-credit {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
