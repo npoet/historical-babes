@@ -20,9 +20,11 @@ const mappedPlaces = figures.flatMap((figure) =>
       era: figure.data.era ?? "",
       label: place.name,
       type: place.type ?? "place",
+      pointLabel: place.type ? `${place.type} place` : "Life place",
       dateLabel: [place.startYear, place.endYear]
         .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
         .join("-"),
+      sortYear: place.startYear ?? place.endYear ?? figure.data.birthYear ?? 0,
       latitude: place.latitude ?? 0,
       longitude: place.longitude ?? 0,
       note: place.note ?? "",
@@ -49,9 +51,11 @@ const eventPlaces = figures.flatMap((figure) =>
         era: figure.data.era ?? "",
         label: event.place ?? event.label,
         eventLabel: event.label,
+        pointLabel: "Context event",
         dateLabel: [event.year ?? event.startYear, event.endYear]
           .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
           .join("-"),
+        sortYear: event.year ?? event.startYear ?? event.endYear ?? figure.data.birthYear ?? 0,
         latitude: coordinates?.latitude,
         longitude: coordinates?.longitude,
         note: event.note ?? "",
@@ -206,6 +210,89 @@ const missingCoordinateItems = [
 
     const focusByFigure = new Map();
     const focusByMarker = new Map();
+    const markerById = new Map();
+    const markersByFigure = new Map();
+
+    markers.forEach((item) => {
+      if (!markersByFigure.has(item.figureId)) {
+        markersByFigure.set(item.figureId, []);
+      }
+      markersByFigure.get(item.figureId).push(item);
+    });
+
+    markersByFigure.forEach((items) => {
+      items.sort((a, b) => (a.sortYear || 0) - (b.sortYear || 0));
+    });
+
+    const closeDetail = () => {
+      if (!detail) return;
+      detail.classList.remove("active");
+      detail.innerHTML = `
+        <span class="beta-label">Map data</span>
+        <h3>Select a marker</h3>
+        <p class="muted">Choose from the browser or select a marker on the map.</p>
+      `;
+    };
+
+    const renderDetail = (item) => {
+      const marker = markerById.get(item.id);
+      if (!detail || !marker) return;
+      const figureItems = markersByFigure.get(item.figureId) || [item];
+      const currentIndex = figureItems.findIndex((candidate) => candidate.id === item.id);
+      const previousItem = figureItems[(currentIndex - 1 + figureItems.length) % figureItems.length];
+      const nextItem = figureItems[(currentIndex + 1) % figureItems.length];
+      const hasMultiple = figureItems.length > 1;
+
+      detail.innerHTML = `
+        <button type="button" class="map-popout-close" aria-label="Close map detail">×</button>
+        <div class="map-popout-grid">
+          <img src="${item.imageSrc}" alt="${item.imageAlt}" class="map-detail-image" loading="lazy">
+          <div class="map-popout-copy">
+            <div class="map-popout-kicker">
+              <span class="beta-label">${item.kind === "event" ? "Context event" : "Life place"}</span>
+              ${hasMultiple ? `<span>${currentIndex + 1} of ${figureItems.length}</span>` : ""}
+            </div>
+            <h3>${item.figureName}</h3>
+            <p class="map-detail-title"><strong>${item.eventLabel || item.label}</strong></p>
+            <dl class="map-detail-facts">
+              ${item.dateLabel ? `<div><dt>Date</dt><dd>${item.dateLabel}</dd></div>` : ""}
+              ${item.pointLabel ? `<div><dt>Point</dt><dd>${item.pointLabel}</dd></div>` : ""}
+              ${item.lifespan ? `<div><dt>Life</dt><dd>${item.lifespan}</dd></div>` : ""}
+              ${item.era ? `<div><dt>Era</dt><dd>${item.era}</dd></div>` : ""}
+              <div><dt>Place</dt><dd>${item.label}</dd></div>
+            </dl>
+            <p class="map-detail-note">${item.note || "No note yet."}</p>
+            <div class="map-detail-footer">
+              <span class="status-pill">${item.status}</span>
+              <div class="map-detail-links">
+                <a href="/${item.figureId}">Open profile</a>
+                <a href="/timeline#${item.figureId}">Open timeline</a>
+              </div>
+            </div>
+            ${
+              hasMultiple
+                ? `<div class="map-popout-stepper">
+                    <button type="button" data-map-step="${previousItem.id}">Previous point</button>
+                    <button type="button" data-map-step="${nextItem.id}">Next point</button>
+                  </div>`
+                : ""
+            }
+          </div>
+        </div>
+      `;
+      detail.classList.add("active");
+      detail.querySelector(".map-popout-close")?.addEventListener("click", closeDetail);
+      detail.querySelectorAll("[data-map-step]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const markerId = button.getAttribute("data-map-step");
+          const next = markers.find((candidate) => candidate.id === markerId);
+          if (next) renderDetail(next);
+        });
+      });
+      marker.openPopup();
+      map.setView([item.latitude, item.longitude], Math.max(map.getZoom(), 5), { animate: true });
+      detail.focus();
+    };
 
     markers.forEach((item) => {
       const marker = window.L.circleMarker([item.latitude, item.longitude], {
@@ -215,54 +302,20 @@ const missingCoordinateItems = [
         fillOpacity: 0.85,
         weight: 2,
       }).addTo(map);
-
-      const renderDetail = () => {
-        if (!detail) return;
-        detail.innerHTML = `
-          <button type="button" class="map-popout-close" aria-label="Close map detail">×</button>
-          <div class="map-popout-grid">
-            <img src="${item.imageSrc}" alt="${item.imageAlt}" class="map-detail-image" loading="lazy">
-            <div>
-              <span class="beta-label">${item.kind === "event" ? "Context event" : "Life place"}</span>
-              <h3>${item.figureName}</h3>
-              <p><strong>${item.eventLabel || item.label}</strong></p>
-              <dl class="map-detail-facts">
-                ${item.dateLabel ? `<div><dt>Date</dt><dd>${item.dateLabel}</dd></div>` : ""}
-                ${item.lifespan ? `<div><dt>Life</dt><dd>${item.lifespan}</dd></div>` : ""}
-                ${item.era ? `<div><dt>Era</dt><dd>${item.era}</dd></div>` : ""}
-                <div><dt>Place</dt><dd>${item.label}</dd></div>
-              </dl>
-              <p>${item.note || "No note yet."}</p>
-              <span class="status-pill">${item.status}</span>
-              <div class="map-detail-links">
-                <a href="/${item.figureId}">Open profile</a>
-                <a href="/timeline#${item.figureId}">Open timeline</a>
-              </div>
-            </div>
-          </div>
-        `;
-        detail.classList.add("active");
-        detail.querySelector(".map-popout-close")?.addEventListener("click", () => {
-          detail.classList.remove("active");
-          detail.innerHTML = `
-            <span class="beta-label">Map data</span>
-            <h3>Select a marker</h3>
-            <p class="muted">Choose from the browser or select a marker on the map.</p>
-          `;
-        });
-        marker.openPopup();
-        map.setView([item.latitude, item.longitude], Math.max(map.getZoom(), 5), { animate: true });
-        detail.focus();
-      };
+      markerById.set(item.id, marker);
 
       if (!focusByFigure.has(item.figureId)) {
-        focusByFigure.set(item.figureId, renderDetail);
+        focusByFigure.set(item.figureId, () => renderDetail(item));
       }
-      focusByMarker.set(item.id, renderDetail);
+      focusByMarker.set(item.id, () => renderDetail(item));
 
-      marker.bindPopup(`<strong>${item.figureName}</strong><br>${item.eventLabel || item.label}`);
-      marker.on("click", renderDetail);
-      marker.on("focus", renderDetail);
+      marker.bindPopup(`
+        <strong>${item.figureName}</strong><br>
+        ${item.eventLabel || item.label}
+        ${item.dateLabel ? `<br><small>${item.dateLabel}</small>` : ""}
+      `);
+      marker.on("click", () => renderDetail(item));
+      marker.on("focus", () => renderDetail(item));
     });
 
     const hashFigure = window.location.hash.slice(1);
