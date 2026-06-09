@@ -200,6 +200,8 @@ const missingCoordinateItems = [
         <button type="button" data-chip-query="resistance civil rights activist">Resistance</button>
         <button type="button" data-chip-query="first pioneer">Firsts</button>
         <button type="button" data-chip-query="war conflict resistance">War + Conflict</button>
+        <button type="button" data-random-figure>Show me someone</button>
+        <button type="button" data-random-chip>Random trail</button>
       </div>
 
       <div class="collection-chips" aria-label="Keep exploring">
@@ -410,6 +412,10 @@ const missingCoordinateItems = [
     document.querySelectorAll<HTMLElement>(".figure-card");
   const chipButtons =
     document.querySelectorAll<HTMLButtonElement>("[data-chip-query]");
+  const randomFigureButton =
+    document.querySelector<HTMLButtonElement>("[data-random-figure]");
+  const randomChipButton =
+    document.querySelector<HTMLButtonElement>("[data-random-chip]");
 
   const noResults =
     document.getElementById("no-results");
@@ -525,5 +531,18 @@ const missingCoordinateItems = [
       await navigator.clipboard?.writeText(url.toString());
       share.textContent = "Copied";
     });
+  });
+
+  randomFigureButton?.addEventListener("click", () => {
+    const visibleCards = [...cards].filter((card) => card.style.display !== "none");
+    const pool = visibleCards.length ? visibleCards : [...cards];
+    const chosen = pool[Math.floor(Math.random() * pool.length)] as HTMLAnchorElement | undefined;
+    if (chosen?.href) window.location.href = chosen.href;
+  });
+
+  randomChipButton?.addEventListener("click", () => {
+    const pool = [...chipButtons].filter((button) => button.closest("[aria-label='Keep exploring']"));
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    chosen?.click();
   });
 </script>

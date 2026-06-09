@@ -42,7 +42,8 @@ const figureRows = figures.map((figure) => {
     status: getStatusLabel(figure.data.dateStatus),
     summary: figure.data.summary ?? "",
     type: "life",
-    href: `/${figure.id}`,
+      href: `/${figure.id}`,
+      scope: "person",
   };
 });
 const workRows = figures.flatMap((figure) =>
@@ -66,6 +67,7 @@ const workRows = figures.flatMap((figure) =>
       summary: workNote(work),
       type: "work",
       href: `/${figure.id}`,
+      scope: "person",
     })) ?? []
 );
 const placeRows = figures.flatMap((figure) =>
@@ -89,6 +91,7 @@ const placeRows = figures.flatMap((figure) =>
       summary: place.note ?? "",
       type: "place",
       href: `/${figure.id}`,
+      scope: "person",
     })) ?? []
 );
 const eventRows = figures.flatMap((figure) =>
@@ -107,6 +110,7 @@ const eventRows = figures.flatMap((figure) =>
     summary: event.note ?? "",
     type: "event",
     href: `/${figure.id}`,
+    scope: "context",
   })) ?? []
 );
 const seedRows = figures.flatMap((figure) =>
@@ -132,6 +136,7 @@ const seedRows = figures.flatMap((figure) =>
       type: "story",
       href: `/${figure.id}`,
       source: seed.source,
+      scope: "person",
     })) ?? []
 );
 const rows = [...figureRows, ...workRows, ...placeRows, ...eventRows, ...seedRows].sort((a, b) => {
@@ -207,9 +212,17 @@ const laneFor = (type: string) =>
           <option value="life">Lifespans</option>
           <option value="work">Important works</option>
           <option value="place">Place moves</option>
-          <option value="event">Context events</option>
+          <option value="event">World/context events</option>
           <option value="story">Historical threads</option>
         </select>
+      </label>
+    </div>
+
+    <div class="collection-chips timeline-layer-controls" aria-label="Timeline layers">
+      <span>Layers</span>
+      <label class="context-toggle">
+        <input id="timeline-context-toggle" type="checkbox" checked />
+        Show world/context events
       </label>
     </div>
 
@@ -269,7 +282,7 @@ const laneFor = (type: string) =>
       <span class="life">Lives</span>
       <span class="work">Works</span>
       <span class="place">Places</span>
-      <span class="event">Events</span>
+      <span class="event">World/context</span>
       <span class="story">Threads</span>
     </div>
 
@@ -287,6 +300,7 @@ const laneFor = (type: string) =>
           data-era={row.era}
           data-themes={row.themes.join("|")}
           data-type={row.type}
+          data-scope={row.scope}
           data-year={row.startYear ?? ""}
           data-end-year={row.endYear ?? row.startYear ?? ""}
           data-name={row.name}
@@ -296,7 +310,7 @@ const laneFor = (type: string) =>
           data-summary={row.summary}
           data-href={row.href}
           data-source={row.type === "story" && "source" in row ? row.source : ""}
-          data-search={`${row.name} ${"figureName" in row ? row.figureName : ""} ${row.label} ${row.summary} ${row.era} ${row.themes.join(" ")} ${row.occupations.join(" ")} ${row.type}`}
+          data-search={`${row.name} ${"figureName" in row ? row.figureName : ""} ${row.label} ${row.summary} ${row.era} ${row.themes.join(" ")} ${row.occupations.join(" ")} ${row.type} ${row.scope}`}
           style={`--start: ${positionFor(row.startYear)}; --end: ${positionFor(row.endYear)}; --lane: ${laneFor(row.type)}%;`}
         >
           <button type="button" class="timeline-bar">
@@ -321,6 +335,7 @@ const laneFor = (type: string) =>
   const themeFilter = document.getElementById("timeline-theme") as HTMLSelectElement | null;
   const typeFilter = document.getElementById("timeline-type") as HTMLSelectElement | null;
   const timelineSearch = document.getElementById("timeline-search") as HTMLInputElement | null;
+  const contextToggle = document.getElementById("timeline-context-toggle") as HTMLInputElement | null;
   const detail = document.getElementById("timeline-detail");
   const rows = document.querySelectorAll<HTMLElement>(".timeline-row");
   const timeline = document.querySelector<HTMLElement>(".single-line-timeline");
@@ -333,6 +348,7 @@ const laneFor = (type: string) =>
     const theme = themeFilter?.value ?? "";
     const type = typeFilter?.value ?? "";
     const query = timelineSearch?.value.toLowerCase().trim() ?? "";
+    const showContext = contextToggle?.checked ?? true;
 
     rows.forEach((row) => {
       const themes = row.dataset.themes?.split("|") ?? [];
@@ -341,6 +357,7 @@ const laneFor = (type: string) =>
         (!era || row.dataset.era === era) &&
         (!theme || themes.includes(theme)) &&
         (!type || row.dataset.type === type) &&
+        (showContext || row.dataset.scope !== "context") &&
         (!query || searchText.includes(query));
 
       row.classList.toggle("hidden", !matches);
@@ -351,6 +368,7 @@ const laneFor = (type: string) =>
     control?.addEventListener("change", applyFilters);
   });
   timelineSearch?.addEventListener("input", applyFilters);
+  contextToggle?.addEventListener("change", applyFilters);
 
   const renderDetail = (row: HTMLElement) => {
     if (!detail) return;
@@ -371,7 +389,7 @@ const laneFor = (type: string) =>
       : "";
 
     detail.innerHTML = `
-      <span class="beta-label">${row.dataset.type === "story" ? "Historical thread" : row.dataset.type}</span>
+      <span class="beta-label">${row.dataset.scope === "context" ? "World/context event" : row.dataset.type === "story" ? "Historical thread" : row.dataset.type}</span>
       <h3>${row.dataset.name}</h3>
       <p><strong>${row.dataset.figure}</strong> · ${row.dataset.label}</p>
       <p>${row.dataset.summary || "No note yet."}</p>

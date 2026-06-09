@@ -82,7 +82,7 @@ html[data-theme="dark"] {
   align-items: center;
 
   width: 100%;
-  gap: 1.5rem;
+  gap: clamp(2rem, 16vw, 12rem);
 }
 
 .header-actions {
@@ -459,6 +459,16 @@ p + h3 {
   font-weight: 700;
 }
 
+.collection-chips button small {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: var(--color-purple);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
 .collection-chips button:hover {
   border-color: var(--color-pink);
   color: var(--color-pink);
@@ -677,6 +687,21 @@ p + h3 {
   align-items: start;
 }
 
+.context-toggle {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  width: fit-content;
+  color: var(--color-text-alt);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.context-toggle input {
+  accent-color: var(--color-purple);
+}
+
 .map-legend {
   display: flex;
   flex-wrap: wrap;
@@ -810,7 +835,9 @@ p + h3 {
   z-index: 600;
   left: 1rem;
   bottom: 1rem;
-  width: min(720px, calc(100% - 2rem));
+  right: calc(360px + 2.5rem);
+  width: auto;
+  max-width: 720px;
   padding: 0.85rem;
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -931,6 +958,10 @@ p + h3 {
   color: var(--color-text);
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.timeline-layer-controls {
+  align-items: center;
 }
 
 .map-detail-links,
@@ -1187,11 +1218,13 @@ p + h3 {
 }
 
 .timeline-row.event .timeline-bar {
-  background: rgba(123, 44, 255, 0.12);
+  border: 1px dashed rgba(123, 44, 255, 0.35);
+  background: rgba(123, 44, 255, 0.08);
 }
 
 .timeline-row.event {
   border-top-color: var(--color-purple);
+  opacity: 0.88;
 }
 
 .timeline-row.work .timeline-bar {
@@ -1353,7 +1386,9 @@ p + h3 {
 
   .map-detail {
     position: static;
+    right: auto;
     width: 100%;
+    max-width: none;
     margin-top: 1rem;
   }
 
