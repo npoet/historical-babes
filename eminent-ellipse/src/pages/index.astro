@@ -6,8 +6,20 @@ import SiteFooter from "../components/SiteFooter.astro"
 
 const figures = await getCollection("figures");
 
-// Select first 8 figures for homepage feature
-const featuredFigures = figures.slice(0, 8);
+const featuredIds = [
+  "mar-a-orosa",
+  "ada-lovelace",
+  "elena-zelayeta",
+  "bessie-coleman",
+  "mary-therese-klinker",
+  "go-won-go-mohawk",
+  "adelina-otero-warren",
+  "maria-stewart",
+];
+
+const featuredFigures = figures.filter((figure) =>
+  featuredIds.includes(figure.id)
+);
 
 const stats = {
   figures: figures.length,
@@ -27,10 +39,7 @@ const stats = {
       </h2>
 
       <p>
-        Explore the lives and legacies of influential women
-        from across centuries, cultures, and disciplines.
-        Scientists, rulers, artists, activists, explorers,
-        inventors, and visionaries who shaped the world.
+        Explore the lives and legacies of influential women from across centuries and cultures. Scientists, rulers, artists, activists, explorers, inventors, and visionaries who shaped the world.
       </p>
     </div>
   </section>
@@ -74,16 +83,12 @@ const stats = {
     <h3>About The Archive</h3>
 
     <p>
-      Historical Babes is a growing collection of
-      biographies, references, and historical resources
-      focused on influential women throughout history.
+      Historical Babes is dedicated to telling the stories of extraordinary women throughout history.
+      From renowned pioneers to forgotten trailblazers, we explore the lives and legacies of women whose contributions have left a lasting mark on society, the sciences, the arts, and beyond.
     </p>
 
     <p>
-      From ancient rulers and philosophers to modern
-      scientists, artists, and civil rights leaders,
-      the archive highlights individuals whose actions
-      and ideas continue to shape the world.
+      By highlighting both overlooked figures and lesser-known facets of familiar icons, we strive to deepen our understanding of the women whose achievements, resilience, and influence helped shape the world we know today.
     </p>
   </section>
 
@@ -117,6 +122,16 @@ const stats = {
         Years of History
       </span>
     </div>
+  </section>
+
+  <section class="homepage-section about-section">
+    <p>
+     Historical Babes Archive is a growing collection of biographies, references, and historical resources focused on influential women throughout history.
+    </p>
+
+    <p>
+     From ancient rulers and philosophers to modern scientists, artists, and civil rights leaders, the archive highlights individuals whose actions and ideas continue to shape our world.
+    </p>
   </section>
 
   <SiteFooter />
