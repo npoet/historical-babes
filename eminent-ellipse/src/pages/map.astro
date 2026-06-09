@@ -1,0 +1,177 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import { siteConfig } from "../site.config";
+import { getStatusLabel, reliabilityCopy } from "../lib/figures";
+
+const figures = await getCollection("figures");
+const mappedPlaces = figures.flatMap((figure) =>
+  figure.data.places
+    ?.filter((place) => typeof place.latitude === "number" && typeof place.longitude === "number")
+    .map((place) => ({
+      id: `${figure.id}-${place.name}`,
+      figureId: figure.id,
+      figureName: figure.data.name,
+      label: place.name,
+      type: place.type ?? "place",
+      latitude: place.latitude ?? 0,
+      longitude: place.longitude ?? 0,
+      note: place.note ?? "",
+      status: getStatusLabel(place.status),
+      kind: "life",
+    })) ?? []
+);
+const coordinateByPlace = new Map(
+  mappedPlaces.map((item) => [item.label, { latitude: item.latitude, longitude: item.longitude }]),
+);
+const eventPlaces = figures.flatMap((figure) =>
+  figure.data.contextEvents
+    ?.filter((event) => event.place)
+    .map((event) => {
+      const coordinates = coordinateByPlace.get(event.place ?? "");
+
+      return {
+        id: `${figure.id}-${event.label}`,
+        figureId: figure.id,
+        figureName: figure.data.name,
+        label: event.place ?? event.label,
+        eventLabel: event.label,
+        latitude: coordinates?.latitude,
+        longitude: coordinates?.longitude,
+        note: event.note ?? "",
+        status: getStatusLabel(event.status),
+        kind: "event",
+      };
+    }) ?? []
+);
+const eventMarkers = eventPlaces
+  .filter((item) => typeof item.latitude === "number" && typeof item.longitude === "number")
+  .map((item) => ({
+    ...item,
+    latitude: item.latitude ?? 0,
+    longitude: item.longitude ?? 0,
+  }));
+const mapMarkers = [...mappedPlaces, ...eventMarkers].sort((a, b) =>
+  a.figureName.localeCompare(b.figureName),
+);
+const missingCoordinateItems = [
+  ...figures.flatMap((figure) =>
+    figure.data.places
+      ?.filter((place) => typeof place.latitude !== "number" || typeof place.longitude !== "number")
+      .map((place) => ({
+        figureId: figure.id,
+        figureName: figure.data.name,
+        label: place.name,
+        note: place.note ?? "Place metadata is present, but coordinates have not been reviewed yet.",
+        status: getStatusLabel(place.status),
+      })) ?? []
+  ),
+  ...eventPlaces
+    .filter((item) => typeof item.latitude !== "number" || typeof item.longitude !== "number")
+    .map((event) => ({
+      figureId: event.figureId,
+      figureName: event.figureName,
+      label: event.label,
+      note: `${event.eventLabel} has a place note but no reviewed coordinates yet.`,
+      status: event.status,
+    })),
+];
+---
+
+<BaseLayout title="Archive Map" description={`Explore mapped places in the ${siteConfig.title}.`} canonicalPath="/map">
+  <SiteHeader />
+
+  <section class="archive-hero">
+    <div>
+      <span class="beta-label">Archive beta</span>
+      <h2>Map</h2>
+      <p>Pan, zoom, and follow place clues across the archive.</p>
+      <p class="reliability-note">{reliabilityCopy}</p>
+    </div>
+  </section>
+
+  <section class="map-page-layout">
+    <div
+      id="leaflet-map"
+      class="leaflet-map"
+      data-markers={JSON.stringify(mapMarkers)}
+      aria-label="Interactive Historical Babes archive map"
+    ></div>
+
+    <aside id="map-detail" class="map-detail" aria-live="polite">
+      <span class="beta-label">Map data</span>
+      <h3>Select a marker</h3>
+      <p class="muted">Life places use pink markers. Context events use purple markers.</p>
+    </aside>
+  </section>
+
+  {
+    missingCoordinateItems.length > 0 && (
+      <section class="archive-panel">
+        <div class="section-heading">
+          <h3>Awaiting Reviewed Coordinates</h3>
+          <span>{missingCoordinateItems.length} entries</span>
+        </div>
+
+        <ul class="map-list">
+          {missingCoordinateItems.map((item) => (
+            <li>
+              <a href={`/${item.figureId}`}>{item.figureName}</a>
+              <span>{item.label}</span>
+              <span class="status-pill">{item.status}</span>
+              <small>{item.note}</small>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  <SiteFooter />
+</BaseLayout>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script is:inline>
+  const mapEl = document.getElementById("leaflet-map");
+  const detail = document.getElementById("map-detail");
+  const markers = JSON.parse(mapEl?.dataset.markers || "[]");
+
+  if (mapEl && window.L) {
+    const map = window.L.map(mapEl, { scrollWheelZoom: true }).setView([20, 0], 2);
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
+
+    markers.forEach((item) => {
+      const marker = window.L.circleMarker([item.latitude, item.longitude], {
+        radius: item.kind === "event" ? 7 : 6,
+        color: item.kind === "event" ? "#7b2cff" : "#ff2f92",
+        fillColor: item.kind === "event" ? "#7b2cff" : "#ff2f92",
+        fillOpacity: 0.85,
+        weight: 2,
+      }).addTo(map);
+
+      const renderDetail = () => {
+        if (!detail) return;
+        detail.innerHTML = `
+          <span class="beta-label">${item.kind === "event" ? "Context event" : "Life place"}</span>
+          <h3>${item.figureName}</h3>
+          <p><strong>${item.eventLabel || item.label}</strong></p>
+          <p>${item.note || "No note yet."}</p>
+          <span class="status-pill">${item.status}</span>
+          <a href="/${item.figureId}">Open figure</a>
+        `;
+        marker.openPopup();
+        map.setView([item.latitude, item.longitude], Math.max(map.getZoom(), 5), { animate: true });
+      };
+
+      marker.bindPopup(`<strong>${item.figureName}</strong><br>${item.eventLabel || item.label}`);
+      marker.on("click", renderDetail);
+      marker.on("focus", renderDetail);
+    });
+  }
+</script>

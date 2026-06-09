@@ -4,7 +4,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
 import { siteConfig } from "../site.config";
-import { getOccupations, getSearchText, getStartYear } from "../lib/figures";
+import {
+  getOccupations,
+  getSearchBucketData,
+  getSearchText,
+  getStartYear,
+  reliabilityCopy,
+} from "../lib/figures";
 
 const figures = await getCollection("figures");
 
@@ -109,10 +115,12 @@ const markerStyle = (latitude: number, longitude: number) => {
  <SiteHeader />
   <section class="archive-hero">
     <div>
+      <span class="beta-label">Archive beta</span>
       <h2>Archive</h2>
       <p>
         Search names, places, eras, occupations, themes, and notes across the growing Historical Babes collection.
       </p>
+      <p class="reliability-note">{reliabilityCopy}</p>
     </div>
 
     <div class="creator-cta compact">
@@ -128,10 +136,22 @@ const markerStyle = (latitude: number, longitude: number) => {
       <input
         id="figure-search"
         type="search"
-        placeholder="Search names, places, occupations, themes..."
+        placeholder="Search names, places, occupations, themes, context..."
         class="search-input"
         aria-label="Search historical figures"
       />
+      <p class="search-scope-note">
+        Deep search includes figure summaries, places, source-linked context events, and research notes.
+      </p>
+
+      <div class="collection-chips" aria-label="Start somewhere">
+        <span>Start somewhere</span>
+        <button type="button" data-chip-query="scientist physicist chemist science">Scientists</button>
+        <button type="button" data-chip-query="artist writer art">Artists</button>
+        <button type="button" data-chip-query="resistance civil rights activist">Resistance</button>
+        <button type="button" data-chip-query="first pioneer">Firsts</button>
+        <button type="button" data-chip-query="war conflict resistance">War + Conflict</button>
+      </div>
 
       <div class="filter-grid" aria-label="Archive filters">
         <label>
@@ -165,6 +185,7 @@ const markerStyle = (latitude: number, longitude: number) => {
         href={`/${figure.id}`}
         class="figure-card"
         data-search={getSearchText(figure)}
+        data-search-buckets={getSearchBucketData(figure)}
         data-era={figure.data.era ?? ""}
         data-occupations={getOccupations(figure).join("|")}
         data-themes={(figure.data.themes ?? []).join("|")}
@@ -191,6 +212,13 @@ const markerStyle = (latitude: number, longitude: number) => {
               <p>{figure.data.summary}</p>
             )
           }
+
+          <small class="match-hint" aria-live="polite"></small>
+
+          <span class="card-actions">
+            <span>Open profile</span>
+            <span class="share-card" data-share-url={`/${figure.id}`}>Share</span>
+          </span>
         </div>
       </a>
     ))}
@@ -297,6 +325,8 @@ const markerStyle = (latitude: number, longitude: number) => {
 
   const cards =
     document.querySelectorAll<HTMLElement>(".figure-card");
+  const chipButtons =
+    document.querySelectorAll<HTMLButtonElement>("[data-chip-query]");
 
   const noResults =
     document.getElementById("no-results");
@@ -323,6 +353,12 @@ const markerStyle = (latitude: number, longitude: number) => {
         card.dataset.occupations || "";
       const themes =
         card.dataset.themes || "";
+      const hint =
+        card.querySelector<HTMLElement>(".match-hint");
+      const buckets = JSON.parse(card.dataset.searchBuckets || "[]") as {
+        label: string;
+        text: string;
+      }[];
 
       const match =
         search.includes(query) &&
@@ -332,6 +368,19 @@ const markerStyle = (latitude: number, longitude: number) => {
 
       card.style.display =
         match ? "" : "none";
+
+      if (hint) {
+        const matchedBuckets = query
+          ? buckets
+              .filter((bucket) => bucket.text.includes(query))
+              .map((bucket) => bucket.label)
+              .slice(0, 3)
+          : [];
+
+        hint.textContent = matchedBuckets.length
+          ? `Matched in ${matchedBuckets.join(", ")}`
+          : "";
+      }
 
       if (match) visible++;
     });
@@ -348,5 +397,33 @@ const markerStyle = (latitude: number, longitude: number) => {
   [searchInput, eraFilter, occupationFilter, themeFilter].forEach((control) => {
     control?.addEventListener("input", applyFilters);
     control?.addEventListener("change", applyFilters);
+  });
+
+  chipButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!searchInput) return;
+      searchInput.value = button.dataset.chipQuery || "";
+      searchInput.focus();
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll<HTMLElement>(".share-card").forEach((share) => {
+    share.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const card = share.closest<HTMLAnchorElement>(".figure-card");
+      const url = new URL(share.dataset.shareUrl || card?.getAttribute("href") || "/", window.location.origin);
+      const title = card?.querySelector("h3")?.textContent?.trim() || "Historical Babes";
+
+      if (navigator.share) {
+        await navigator.share({ title, url: url.toString() });
+        return;
+      }
+
+      await navigator.clipboard?.writeText(url.toString());
+      share.textContent = "Copied";
+    });
   });
 </script>

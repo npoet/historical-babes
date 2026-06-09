@@ -1,6 +1,30 @@
 import type { CollectionEntry } from "astro:content";
 
 export type FigureEntry = CollectionEntry<"figures">;
+export type FactStatus = "reviewed" | "approximate" | "needs-source";
+
+export type RelatedFigure = {
+  figure: FigureEntry;
+  reasons: string[];
+};
+
+export const reliabilityCopy =
+  "Archive beta: biographies are source-linked; map, timeline, context, date, and coordinate metadata may be approximate or under review.";
+
+export const statusLabels: Record<FactStatus, string> = {
+  reviewed: "Reviewed",
+  approximate: "Approx.",
+  "needs-source": "Needs source",
+};
+
+export const getStatusLabel = (status?: FactStatus) =>
+  status ? statusLabels[status] : "Under review";
+
+export const formatYear = (year?: number) => {
+  if (typeof year !== "number") return "Unknown";
+  if (year < 0) return `${Math.abs(year)} BCE`;
+  return `${year}`;
+};
 
 export const getOccupations = (figure: FigureEntry) =>
   figure.data.occupations?.length
@@ -40,6 +64,63 @@ export const getSearchText = (figure: FigureEntry) =>
     .join(" ")
     .toLowerCase();
 
+export const getSearchBuckets = (figure: FigureEntry) => {
+  const buckets = [
+    {
+      label: "Name",
+      values: [figure.data.name],
+    },
+    {
+      label: "Summary",
+      values: [figure.data.summary],
+    },
+    {
+      label: "Occupations",
+      values: [figure.data.occupation, ...getOccupations(figure)],
+    },
+    {
+      label: "Era",
+      values: [figure.data.era],
+    },
+    {
+      label: "Tags",
+      values: figure.data.tags ?? [],
+    },
+    {
+      label: "Themes",
+      values: figure.data.themes ?? [],
+    },
+    {
+      label: "Places",
+      values:
+        figure.data.places?.flatMap((place) => [
+          place.name,
+          place.type,
+          place.note,
+        ]) ?? [],
+    },
+    {
+      label: "Context",
+      values:
+        figure.data.contextEvents?.flatMap((event) => [
+          event.label,
+          event.place,
+          event.note,
+        ]) ?? [],
+    },
+  ];
+
+  return buckets
+    .map((bucket) => ({
+      label: bucket.label,
+      text: bucket.values.filter(Boolean).join(" ").toLowerCase(),
+    }))
+    .filter((bucket) => bucket.text);
+};
+
+export const getSearchBucketData = (figure: FigureEntry) =>
+  JSON.stringify(getSearchBuckets(figure));
+
 export const getStartYear = (figure: FigureEntry) => {
   if (typeof figure.data.birthYear === "number") {
     return figure.data.birthYear;
@@ -65,33 +146,42 @@ export const getRelatedFigures = (
   figures: FigureEntry[],
   limit = 3,
 ) => {
-  const currentTerms = new Set([
-    figure.data.era,
-    figure.data.nationality,
-    ...getOccupations(figure),
-    ...(figure.data.tags ?? []),
-    ...(figure.data.themes ?? []),
-  ].filter(Boolean));
+  const currentThemes = new Set(figure.data.themes ?? []);
+  const currentOccupations = new Set(getOccupations(figure));
+  const currentEra = figure.data.era;
+  const currentPlaces = new Set(
+    figure.data.places?.map((place) => place.name) ?? [],
+  );
 
-  return figures
+  const related = figures
     .filter((candidate) => candidate.id !== figure.id)
     .map((candidate) => {
-      const candidateTerms = [
-        candidate.data.era,
-        candidate.data.nationality,
-        ...getOccupations(candidate),
-        ...(candidate.data.tags ?? []),
-        ...(candidate.data.themes ?? []),
-      ].filter(Boolean);
+      const candidateThemes = candidate.data.themes ?? [];
+      const candidateOccupations = getOccupations(candidate);
+      const candidatePlaces = candidate.data.places?.map((place) => place.name) ?? [];
+      const reasons = new Set<string>();
 
-      const score = candidateTerms.filter((term) =>
-        currentTerms.has(term),
-      ).length;
+      if (candidateThemes.some((theme) => currentThemes.has(theme))) {
+        reasons.add("Shared theme");
+      }
 
-      return { candidate, score };
+      if (currentEra && candidate.data.era === currentEra) {
+        reasons.add("Same era");
+      }
+
+      if (candidateOccupations.some((occupation) => currentOccupations.has(occupation))) {
+        reasons.add("Similar work");
+      }
+
+      if (candidatePlaces.some((place) => currentPlaces.has(place))) {
+        reasons.add("Connected place");
+      }
+
+      return { figure: candidate, reasons: [...reasons] };
     })
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map(({ candidate }) => candidate);
+    .filter(({ reasons }) => reasons.length > 0)
+    .sort((a, b) => b.reasons.length - a.reasons.length)
+    .slice(0, limit);
+
+  return related satisfies RelatedFigure[];
 };

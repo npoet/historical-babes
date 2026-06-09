@@ -1,0 +1,198 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import { siteConfig } from "../site.config";
+import {
+  formatYear,
+  getOccupations,
+  getStartYear,
+  getStatusLabel,
+  reliabilityCopy,
+} from "../lib/figures";
+
+const figures = await getCollection("figures");
+const figureRows = figures.map((figure) => {
+  const startYear = getStartYear(figure);
+  const endYear = typeof figure.data.deathYear === "number" ? figure.data.deathYear : startYear;
+
+  return {
+    id: figure.id,
+    name: figure.data.name,
+    startYear,
+    endYear,
+    label: figure.data.lifespan ?? formatYear(startYear),
+    era: figure.data.era ?? "Unknown era",
+    themes: figure.data.themes ?? [],
+    occupations: getOccupations(figure),
+    status: getStatusLabel(figure.data.dateStatus),
+    summary: figure.data.summary ?? "",
+    type: "life",
+  };
+});
+const eventRows = figures.flatMap((figure) =>
+  figure.data.contextEvents?.map((event) => ({
+    id: `${figure.id}-${event.label}`,
+    figureId: figure.id,
+    name: event.label,
+    figureName: figure.data.name,
+    startYear: event.year ?? event.startYear,
+    endYear: event.endYear ?? event.year ?? event.startYear,
+    label: [event.year ?? event.startYear, event.endYear].filter((year) => typeof year === "number").map((year) => formatYear(year)).join("-") || "Unknown date",
+    era: figure.data.era ?? "Unknown era",
+    themes: figure.data.themes ?? [],
+    occupations: getOccupations(figure),
+    status: getStatusLabel(event.status),
+    summary: event.note ?? "",
+    type: "event",
+  })) ?? []
+);
+const rows = [...figureRows, ...eventRows].sort((a, b) => {
+  const aYear = typeof a.startYear === "number" ? a.startYear : Number.POSITIVE_INFINITY;
+  const bYear = typeof b.startYear === "number" ? b.startYear : Number.POSITIVE_INFINITY;
+  return aYear - bYear;
+});
+const datedRows = rows.filter((row) => typeof row.startYear === "number");
+const minYear = Math.min(...datedRows.map((row) => row.startYear ?? 0));
+const maxYear = Math.max(...datedRows.map((row) => row.endYear ?? row.startYear ?? 0));
+const range = Math.max(1, maxYear - minYear);
+const eras = [...new Set(figureRows.map((row) => row.era))].sort();
+const themes = [...new Set(figureRows.flatMap((row) => row.themes))].sort();
+const yearBuckets = new Map<number, number>();
+for (const row of datedRows) {
+  const bucket = Math.floor((row.startYear ?? 0) / 50) * 50;
+  yearBuckets.set(bucket, (yearBuckets.get(bucket) ?? 0) + 1);
+}
+const denseYear = [...yearBuckets.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? minYear;
+const importantYear = datedRows.find((row) => row.type === "event")?.startYear ?? denseYear;
+const positionFor = (year?: number) =>
+  typeof year === "number" ? `${(((year - minYear) / range) * 100).toFixed(2)}%` : "0%";
+---
+
+<BaseLayout title="Archive Timeline" description={`Explore the ${siteConfig.title} by year.`} canonicalPath="/timeline">
+  <SiteHeader />
+
+  <section class="archive-hero">
+    <div>
+      <span class="beta-label">Archive beta</span>
+      <h2>Timeline</h2>
+      <p>Lifespans, works, moves, and context events arranged across the archive.</p>
+      <p class="reliability-note">{reliabilityCopy}</p>
+    </div>
+  </section>
+
+  <section class="search-section timeline-controls">
+    <div class="filter-grid" aria-label="Timeline filters">
+      <label>
+        Era
+        <select id="timeline-era">
+          <option value="">Any era</option>
+          {eras.map((era) => <option value={era}>{era}</option>)}
+        </select>
+      </label>
+
+      <label>
+        Theme
+        <select id="timeline-theme">
+          <option value="">Any theme</option>
+          {themes.map((theme) => <option value={theme}>{theme}</option>)}
+        </select>
+      </label>
+
+      <label>
+        Type
+        <select id="timeline-type">
+          <option value="">All timeline notes</option>
+          <option value="life">Lifespans</option>
+          <option value="event">Context events</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="collection-chips" aria-label="Start somewhere">
+      <span>Start somewhere</span>
+      <button type="button" data-jump-year={denseYear}>Dense years</button>
+      <button type="button" data-jump-year={importantYear}>Important years</button>
+      <button type="button" data-theme-query="Science and Innovation">Scientists</button>
+      <button type="button" data-theme-query="Power and Resistance">Resistance</button>
+    </div>
+  </section>
+
+  <section class="timeline-scale" style={`--min-year: ${minYear}; --max-year: ${maxYear};`}>
+    <div class="timeline-axis">
+      <span>{formatYear(minYear)}</span>
+      <span>{formatYear(maxYear)}</span>
+    </div>
+
+    <ol class="timeline-rows">
+      {rows.map((row) => (
+        <li
+          class={`timeline-row ${row.type}`}
+          data-era={row.era}
+          data-themes={row.themes.join("|")}
+          data-type={row.type}
+          data-year={row.startYear ?? ""}
+          style={`--start: ${positionFor(row.startYear)}; --end: ${positionFor(row.endYear)};`}
+        >
+          <a href={`/${row.type === "event" ? row.figureId : row.id}`} class="timeline-bar">
+            <strong>{row.name}</strong>
+            {"figureName" in row && <span>{row.figureName}</span>}
+          </a>
+          <div class="timeline-meta">
+            <span>{row.label}</span>
+            <span class="status-pill">{row.status}</span>
+            {row.summary && <small>{row.summary}</small>}
+          </div>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <SiteFooter />
+</BaseLayout>
+
+<script>
+  const eraFilter = document.getElementById("timeline-era") as HTMLSelectElement | null;
+  const themeFilter = document.getElementById("timeline-theme") as HTMLSelectElement | null;
+  const typeFilter = document.getElementById("timeline-type") as HTMLSelectElement | null;
+  const rows = document.querySelectorAll<HTMLElement>(".timeline-row");
+  const jumpButtons = document.querySelectorAll<HTMLButtonElement>("[data-jump-year]");
+  const themeButtons = document.querySelectorAll<HTMLButtonElement>("[data-theme-query]");
+
+  const applyFilters = () => {
+    const era = eraFilter?.value ?? "";
+    const theme = themeFilter?.value ?? "";
+    const type = typeFilter?.value ?? "";
+
+    rows.forEach((row) => {
+      const themes = row.dataset.themes?.split("|") ?? [];
+      const matches =
+        (!era || row.dataset.era === era) &&
+        (!theme || themes.includes(theme)) &&
+        (!type || row.dataset.type === type);
+
+      row.classList.toggle("hidden", !matches);
+    });
+  };
+
+  [eraFilter, themeFilter, typeFilter].forEach((control) => {
+    control?.addEventListener("change", applyFilters);
+  });
+
+  jumpButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const targetYear = Number(button.dataset.jumpYear ?? "");
+      const target = [...rows].find((row) => Number(row.dataset.year) >= targetYear);
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+
+  themeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!themeFilter) return;
+      themeFilter.value = button.dataset.themeQuery ?? "";
+      applyFilters();
+    });
+  });
+</script>

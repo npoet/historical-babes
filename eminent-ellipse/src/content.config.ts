@@ -3,6 +3,8 @@
 import { defineCollection, z } from "astro:content";
 import { glob } from "astro/loaders";
 
+const factStatusSchema = z.enum(["reviewed", "approximate", "needs-source"]);
+
 const placeSchema = z.object({
   name: z.string(),
   type: z
@@ -13,6 +15,8 @@ const placeSchema = z.object({
   startYear: z.number().int().optional(),
   endYear: z.number().int().optional(),
   note: z.string().optional(),
+  status: factStatusSchema.optional(),
+  source: z.string().url().optional(),
 });
 
 const contextEventSchema = z.object({
@@ -22,6 +26,8 @@ const contextEventSchema = z.object({
   endYear: z.number().int().optional(),
   place: z.string().optional(),
   note: z.string().optional(),
+  status: factStatusSchema.optional(),
+  source: z.string().url().optional(),
 });
 
 const figureSchema = z.object({
@@ -41,6 +47,7 @@ const figureSchema = z.object({
   originalInstagramUrl: z.string().url().optional(),
   draft: z.boolean().optional(),
   reviewed: z.boolean().optional(),
+  dateStatus: factStatusSchema.optional(),
 
   places: z.array(placeSchema).optional(),
   contextEvents: z.array(contextEventSchema).optional(),

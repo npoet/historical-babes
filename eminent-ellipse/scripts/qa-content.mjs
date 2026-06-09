@@ -29,6 +29,7 @@ const hasBlock = (frontmatter, key) =>
   new RegExp(`^${key}:\\s*\\n(?:\\s*-|\\s+\\w+:)`, "m").test(frontmatter);
 
 const findings = [];
+const warnings = [];
 const publicFiles = await readMdxFiles(figuresDir);
 const draftFiles = await readMdxFiles(draftsDir);
 
@@ -51,6 +52,27 @@ for (const file of publicFiles) {
 
   if (!hasValue(frontmatter, "birthYear") && !hasValue(frontmatter, "lifespan")) {
     findings.push(`${label}: missing date metadata`);
+  }
+
+  if (!hasValue(frontmatter, "dateStatus")) {
+    warnings.push(`${label}: date metadata has no reviewed/approximate/needs-source status`);
+  }
+
+  if (/^\s+latitude:\s/m.test(frontmatter) && !/^\s+status:\s*(reviewed|approximate|needs-source)$/m.test(frontmatter)) {
+    warnings.push(`${label}: mapped coordinate metadata has no reliability status`);
+  }
+
+  if (hasBlock(frontmatter, "contextEvents") && !/^\s+source:\s*https?:\/\//m.test(frontmatter)) {
+    warnings.push(`${label}: context event metadata has no direct source URL`);
+  }
+
+  if (hasBlock(frontmatter, "contextEvents") && !/^\s+status:\s*(reviewed|approximate|needs-source)$/m.test(frontmatter)) {
+    warnings.push(`${label}: context timeline metadata has no reliability status`);
+  }
+
+  const referenceCount = (frontmatter.match(/^\s+-\s+title:/gm) ?? []).length;
+  if (referenceCount < 2) {
+    warnings.push(`${label}: weak source coverage, fewer than two references`);
   }
 }
 
@@ -76,4 +98,9 @@ if (findings.length > 0) {
   process.exitCode = 1;
 } else {
   console.log("Content QA passed.");
+}
+
+if (warnings.length > 0) {
+  console.log("Content QA warnings:");
+  warnings.forEach((warning) => console.log(`- ${warning}`));
 }

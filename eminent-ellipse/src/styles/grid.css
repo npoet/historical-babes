@@ -78,6 +78,33 @@
   line-height: 1.35;
 }
 
+.match-hint {
+  display: block;
+  min-height: 1.2rem;
+  margin-top: 0.5rem;
+  color: var(--color-pink);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.card-actions span {
+  color: var(--color-text-alt);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.share-card {
+  color: var(--color-pink) !important;
+}
+
 .works,
 .references {
   line-height: 1.5;

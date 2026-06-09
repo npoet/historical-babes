@@ -7,14 +7,17 @@ import { siteConfig } from "../site.config";
       <div class="footer-credit">
         <span>Historical Babes Archive</span>
 
-        <a
-          href="https://www.linkedin.com/in/nickpoet/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="social-link"
-        >
-          Site by Nick Poet
-        </a>
+        {siteConfig.siteMakers.map((maker, index) => (
+          <a
+            href={maker.linkedInUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="social-link"
+          >
+            {index === 0 ? "Site by " : "With "}
+            {maker.name}
+          </a>
+        ))}
       </div>
     </div>
 

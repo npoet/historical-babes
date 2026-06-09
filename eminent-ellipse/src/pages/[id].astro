@@ -7,7 +7,13 @@ import Separator from "../components/Separator.astro";
 import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
 import { siteConfig } from "../site.config";
-import { getOccupations, getRelatedFigures } from "../lib/figures";
+import {
+  formatYear,
+  getOccupations,
+  getRelatedFigures,
+  getStatusLabel,
+  reliabilityCopy,
+} from "../lib/figures";
 
 export const getStaticPaths = async () => {
   const figures = await getCollection("figures");
@@ -67,9 +73,11 @@ const description =
       />
 
       <div class="content">
+        <span class="beta-label">Archive beta</span>
         <h3>Biography</h3>
 
         {figure.data.summary && <p class="summary">{figure.data.summary}</p>}
+        <p class="reliability-note">{reliabilityCopy}</p>
 
         <Content />
 
@@ -114,7 +122,10 @@ const description =
             typeof figure.data.birthYear === "number" && (
               <>
                 <dt>Born</dt>
-                <dd>{figure.data.birthYear}</dd>
+                <dd>
+                  {formatYear(figure.data.birthYear)}
+                  <span class="status-pill">{getStatusLabel(figure.data.dateStatus)}</span>
+                </dd>
               </>
             )
           }
@@ -123,7 +134,10 @@ const description =
             typeof figure.data.deathYear === "number" && (
               <>
                 <dt>Died</dt>
-                <dd>{figure.data.deathYear}</dd>
+                <dd>
+                  {formatYear(figure.data.deathYear)}
+                  <span class="status-pill">{getStatusLabel(figure.data.dateStatus)}</span>
+                </dd>
               </>
             )
           }
@@ -152,6 +166,7 @@ const description =
         (figure.data.places?.length > 0 || figure.data.contextEvents?.length > 0) && (
           <aside class="context">
             <h3>Context</h3>
+            <p class="reliability-note compact">Places, coordinates, and context events are beta metadata and may be approximate.</p>
 
             {figure.data.places?.length > 0 && (
               <>
@@ -161,6 +176,10 @@ const description =
                     <li>
                       <strong>{place.name}</strong>
                       {place.type && <span>{place.type}</span>}
+                      <span class="status-pill">{getStatusLabel(place.status)}</span>
+                      {place.source && (
+                        <a href={place.source} target="_blank" rel="noopener noreferrer">Source</a>
+                      )}
                       {place.note && <small>{place.note}</small>}
                     </li>
                   ))}
@@ -175,7 +194,11 @@ const description =
                   {figure.data.contextEvents.map((event) => (
                     <li>
                       <strong>{event.label}</strong>
-                      <span>{event.year ?? [event.startYear, event.endYear].filter(Boolean).join("-")}</span>
+                      <span>{typeof event.year === "number" ? formatYear(event.year) : [event.startYear, event.endYear].filter((year) => typeof year === "number").map((year) => formatYear(year)).join("-")}</span>
+                      <span class="status-pill">{getStatusLabel(event.status)}</span>
+                      {event.source && (
+                        <a href={event.source} target="_blank" rel="noopener noreferrer">Source</a>
+                      )}
                       {event.note && <small>{event.note}</small>}
                     </li>
                   ))}
@@ -233,6 +256,7 @@ const description =
         <div class="cta-links">
           <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
           <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a href={`mailto:?subject=${encodeURIComponent(`Historical Babes: ${figure.data.name}`)}&body=${encodeURIComponent(`${siteConfig.url}/${figure.id}`)}`}>Share</a>
         </div>
 
         {figure.data.originalInstagramUrl && (
@@ -253,8 +277,11 @@ const description =
             <ul>
               {relatedFigures.map((related) => (
                 <li>
-                  <a href={`/${related.id}`}>{related.data.name}</a>
-                  {related.data.lifespan && <span>{related.data.lifespan}</span>}
+                  <a href={`/${related.figure.id}`}>{related.figure.data.name}</a>
+                  {related.figure.data.lifespan && <span>{related.figure.data.lifespan}</span>}
+                  <div class="reason-list">
+                    {related.reasons.map((reason) => <span class="reason-badge">{reason}</span>)}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -358,6 +385,13 @@ const description =
 
   .references a {
     word-break: break-word;
+  }
+
+  .reason-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
   }
 </style>
 

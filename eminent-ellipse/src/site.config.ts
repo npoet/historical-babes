@@ -9,6 +9,16 @@ export const siteConfig = {
     instagramUrl: "https://www.instagram.com/ameliap0et",
     linkedInUrl: "https://www.linkedin.com/in/amelia-poet-9a2201109/",
   },
+  siteMakers: [
+    {
+      name: "Nick Poet",
+      linkedInUrl: "https://www.linkedin.com/in/nickpoet/",
+    },
+    {
+      name: "Jesse Jenter",
+      linkedInUrl: "https://www.linkedin.com/in/jesse-jenter-a803a913b/",
+    },
+  ],
   newsletterUrl: "",
   supportUrl: "",
 };
