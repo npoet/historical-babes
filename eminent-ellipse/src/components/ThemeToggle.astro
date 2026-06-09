@@ -1,0 +1,39 @@
+<button
+  id="theme-toggle"
+  class="theme-toggle"
+  aria-label="Toggle theme"
+>
+  🌙
+</button>
+
+<script>
+  const button =
+    document.getElementById("theme-toggle");
+
+  const html = document.documentElement;
+
+  const updateIcon = () => {
+    button.textContent =
+      html.dataset.theme === "dark"
+        ? "☀️"
+        : "🌙";
+  };
+
+  updateIcon();
+
+  button.addEventListener("click", () => {
+    const nextTheme =
+      html.dataset.theme === "dark"
+        ? "light"
+        : "dark";
+
+    html.dataset.theme = nextTheme;
+
+    localStorage.setItem(
+      "theme",
+      nextTheme
+    );
+
+    updateIcon();
+  });
+</script>
