@@ -1,0 +1,209 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { getCollection, render } from "astro:content";
+
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Separator from "../components/Separator.astro";
+import SiteHeader from "../components/SiteHeader.astro"
+import SiteFooter from "../components/SiteFooter.astro"
+
+export const getStaticPaths = async () => {
+  const figures = await getCollection("figures");
+
+  return figures.map((figure) => ({
+    params: {
+      id: figure.id,
+    },
+    props: {
+      figures,
+      figure,
+    },
+  }));
+};
+
+type Props = {
+  figures: CollectionEntry<"figures">[];
+  figure: CollectionEntry<"figures">;
+};
+
+const { figures, figure } = Astro.props;
+
+const currentIndex = figures.findIndex(
+  (f) => f.id === figure.id,
+);
+
+const nextFigure =
+  figures[
+    (currentIndex + 1) % figures.length
+  ];
+
+const { Content } = await render(figure);
+---
+
+<BaseLayout title={figure.data.name}>
+  <section>
+    <SiteHeader />
+
+    <Separator />
+
+    <div class="content-wrap">
+      <img
+        class="image fade-in"
+        src={figure.data.image.src}
+        alt={figure.data.image.alt}
+      />
+
+      <div class="content">
+        <h3>Biography</h3>
+
+        <Content />
+
+        <dl>
+          {
+            figure.data.lifespan && (
+              <>
+                <dt>Lifespan</dt>
+                <dd>{figure.data.lifespan}</dd>
+              </>
+            )
+          }
+
+          {
+            figure.data.nationality && (
+              <>
+                <dt>Nationality</dt>
+                <dd>{figure.data.nationality}</dd>
+              </>
+            )
+          }
+
+          {
+            figure.data.occupation && (
+              <>
+                <dt>Occupation</dt>
+                <dd>{figure.data.occupation}</dd>
+              </>
+            )
+          }
+
+          {
+            figure.data.era && (
+              <>
+                <dt>Era</dt>
+                <dd>{figure.data.era}</dd>
+              </>
+            )
+          }
+        </dl>
+      </div>
+
+      {
+        figure.data.importantWorks?.length > 0 && (
+          <aside class="works">
+            <h3>Important Works</h3>
+
+            <ul>
+              {figure.data.importantWorks.map(
+                (work) => (
+                  <li>{work}</li>
+                )
+              )}
+            </ul>
+          </aside>
+        )
+      }
+
+      {
+        figure.data.references?.length > 0 && (
+          <aside class="references">
+            <h3>References</h3>
+
+            <ul>
+              {figure.data.references.map(
+                (reference) => (
+                  <li>
+                    <a
+                      href={reference.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {reference.title}
+                    </a>
+                  </li>
+                )
+              )}
+            </ul>
+          </aside>
+        )
+      }
+    </div>
+  </section>
+  <SiteFooter />
+</BaseLayout>
+
+<style>
+  .content-wrap {
+    grid-template-areas:
+      "img"
+      "content"
+      "works"
+      "references";
+
+    grid-template-columns: 100%;
+  }
+
+  @media (min-width: 44em) {
+    .content-wrap {
+      grid-template-columns: 1fr auto;
+
+      grid-template-areas:
+        "img img"
+        "content works"
+        "content references";
+    }
+  }
+
+  @media (min-width: 60em) {
+    .content-wrap {
+      grid-template-columns:
+        30vw
+        minmax(400px, 1fr)
+        220px;
+
+      grid-template-areas:
+        "img content works"
+        "img content references";
+    }
+  }
+
+  .works {
+    grid-area: works;
+  }
+
+  .references {
+    grid-area: references;
+    margin-top: 2rem;
+  }
+
+  .works ul,
+  .references ul {
+    padding-left: 1rem;
+    line-height: 1.5;
+  }
+
+  .references a {
+    word-break: break-word;
+  }
+</style>
+
+<script>
+  document.querySelectorAll(".fade-in").forEach((img) => {
+    if (img.complete) {
+      img.classList.add("loaded");
+    } else {
+      img.addEventListener("load", () => {
+        img.classList.add("loaded");
+      });
+    }
+  });
+</script>

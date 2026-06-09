@@ -1,0 +1,15 @@
+---
+const { figures } = Astro.props;
+---
+
+<section class="featured-carousel">
+  {figures.map((figure) => (
+    <a href={`/${figure.id}`} class="featured-card">
+      <img
+        src={figure.data.image.src}
+        alt={figure.data.image.alt}
+      />
+      <span>{figure.data.name}</span>
+    </a>
+  ))}
+</section>

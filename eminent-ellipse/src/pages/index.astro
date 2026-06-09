@@ -1,0 +1,275 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro"
+import SiteFooter from "../components/SiteFooter.astro"
+
+const figures = await getCollection("figures");
+
+// Select first 8 figures for homepage feature
+const featuredFigures = figures.slice(0, 8);
+
+const stats = {
+  figures: figures.length,
+  years: "2000+",
+  continents: 5,
+};
+---
+
+<BaseLayout title="Historical Babes">
+  <SiteHeader />
+
+  <section class="landing-hero">
+    <div class="hero-copy">
+      <h2>
+        Women Who
+        <span class="hero-accent">Changed History</span>
+      </h2>
+
+      <p>
+        Explore the lives and legacies of influential women
+        from across centuries, cultures, and disciplines.
+        Scientists, rulers, artists, activists, explorers,
+        inventors, and visionaries who shaped the world.
+      </p>
+    </div>
+  </section>
+
+  <section class="homepage-section">
+    <div class="section-heading">
+      <h3>Featured Figures</h3>
+
+      <a href="/all">View all figures →</a>
+    </div>
+
+    <div class="featured-carousel">
+      {featuredFigures.map((figure) => (
+        <a
+          href={`/${figure.id}`}
+          class="featured-card"
+        >
+          <div class="featured-image">
+            <img
+              src={figure.data.image.src}
+              alt={figure.data.image.alt}
+              loading="lazy"
+            />
+          </div>
+
+          <div class="featured-info">
+            <strong>{figure.data.name}</strong>
+
+            {
+              figure.data.lifespan && (
+                <span>{figure.data.lifespan}</span>
+              )
+            }
+          </div>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <section class="homepage-section about-section">
+    <h3>About The Archive</h3>
+
+    <p>
+      Historical Babes is a growing collection of
+      biographies, references, and historical resources
+      focused on influential women throughout history.
+    </p>
+
+    <p>
+      From ancient rulers and philosophers to modern
+      scientists, artists, and civil rights leaders,
+      the archive highlights individuals whose actions
+      and ideas continue to shape the world.
+    </p>
+  </section>
+
+  <section class="homepage-section stats-section">
+    <div class="stat">
+      <span class="stat-number">
+        {stats.figures}
+      </span>
+
+      <span class="stat-label">
+        Figures
+      </span>
+    </div>
+
+    <div class="stat">
+      <span class="stat-number">
+        {stats.continents}
+      </span>
+
+      <span class="stat-label">
+        Continents
+      </span>
+    </div>
+
+    <div class="stat">
+      <span class="stat-number">
+        {stats.years}
+      </span>
+
+      <span class="stat-label">
+        Years of History
+      </span>
+    </div>
+  </section>
+
+  <SiteFooter />
+</BaseLayout>
+
+<style>
+  .landing-hero {
+    padding: 2rem 0 4rem;
+  }
+
+  .hero-copy {
+    max-width: 900px;
+  }
+
+  .hero-copy h2 {
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-copy p {
+    max-width: 700px;
+
+    line-height: 1.6;
+
+    color: var(--color-text-alt);
+
+    font-size: 1.1rem;
+  }
+
+  .homepage-section {
+    margin-bottom: 6rem;
+  }
+
+  .section-heading {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    margin-bottom: 1.5rem;
+  }
+
+  .featured-carousel {
+    display: flex;
+
+    gap: 1.25rem;
+
+    overflow-x: auto;
+
+    padding-bottom: 1rem;
+
+    scroll-snap-type: x mandatory;
+
+    scrollbar-width: thin;
+  }
+
+  .featured-card {
+    flex: 0 0 220px;
+
+    scroll-snap-align: start;
+
+    color: inherit;
+  }
+
+  .featured-image {
+    overflow: hidden;
+
+    background: var(--color-placeholder);
+
+    aspect-ratio: 3 / 4;
+  }
+
+  .featured-image img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    transition: transform 0.4s ease;
+  }
+
+  .featured-card:hover img {
+    transform: scale(1.05);
+  }
+
+  .featured-info {
+    padding-top: 0.75rem;
+  }
+
+  .featured-info strong {
+    display: block;
+
+    margin-bottom: 0.35rem;
+  }
+
+  .featured-info span {
+    color: var(--color-text-alt);
+
+    font-size: 0.85rem;
+  }
+
+  .about-section {
+    max-width: 850px;
+  }
+
+  .about-section p {
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+  }
+
+  .stats-section {
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 2rem;
+
+    padding: 3rem 0;
+
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-number {
+    display: block;
+
+    font-size: clamp(2rem, 5vw, 4rem);
+
+    font-weight: 700;
+
+    color: var(--color-pink);
+  }
+
+  .stat-label {
+    color: var(--color-text-alt);
+  }
+
+  @media (max-width: 768px) {
+    .stats-section {
+      grid-template-columns: 1fr;
+    }
+
+    .section-heading {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .featured-card {
+      flex-basis: 180px;
+    }
+  }
+</style>

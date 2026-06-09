@@ -1,0 +1,77 @@
+---
+import "../styles/globals.css";
+import "../styles/layout.css";
+import "../styles/grid.css";
+
+interface Props {
+  title?: string;
+}
+
+const { title = "Historical Figures" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+
+    <title>{title}</title>
+
+    <script is:inline>
+      const storedTheme =
+        localStorage.getItem("theme");
+
+      if (storedTheme) {
+        document.documentElement.setAttribute(
+          "data-theme",
+          storedTheme
+        );
+      }
+    </script>
+  </head>
+
+  <script is:inline>
+      const toggle =
+        document.getElementById("theme-toggle");
+
+      const html = document.documentElement;
+
+      if (toggle) {
+        const updateIcon = () => {
+          toggle.textContent =
+            html.dataset.theme === "dark"
+              ? "☀️"
+              : "🌙";
+        };
+
+        updateIcon();
+
+        toggle.addEventListener("click", () => {
+          const nextTheme =
+            html.dataset.theme === "dark"
+              ? "light"
+              : "dark";
+
+          html.dataset.theme = nextTheme;
+
+          localStorage.setItem(
+            "theme",
+            nextTheme
+          );
+
+          updateIcon();
+        });
+      }
+    </script>
+
+  <body>
+    <main class="site-container">
+      <slot />
+    </main>
+  </body>
+</html>
