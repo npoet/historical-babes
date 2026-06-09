@@ -109,6 +109,26 @@ for (const file of publicFiles) {
     }
   }
 
+  const storySeedBlock = blockOf(frontmatter, "storySeeds");
+  const storySeedCount = countMatches(storySeedBlock, /^\s+-\s+title:/gm);
+  if (storySeedCount > 0) {
+    const storySeedSourceCount = countMatches(storySeedBlock, /^\s+source:\s*["']?https?:\/\//gm);
+    const storySeedStatusCount = countMatches(storySeedBlock, /^\s+status:\s*(reviewed|approximate|needs-source)$/gm);
+    const storySeedPromptCount = countMatches(storySeedBlock, /^\s+prompt:\s*\S/gm);
+
+    if (storySeedSourceCount < storySeedCount) {
+      findings.push(`${label}: story seed metadata has no direct source URL`);
+    }
+
+    if (storySeedStatusCount < storySeedCount) {
+      findings.push(`${label}: story seed metadata has no reliability status`);
+    }
+
+    if (storySeedPromptCount < storySeedCount) {
+      findings.push(`${label}: story seed metadata has no prompt`);
+    }
+  }
+
   const referenceCount = (frontmatter.match(/^\s*-\s+title:/gm) ?? []).length;
   if (referenceCount < 2) {
     warnings.push(`${label}: weak source coverage, fewer than two references; marked ${hasValue(frontmatter, "sourceCoverageStatus") ? "with status" : "without status"}`);

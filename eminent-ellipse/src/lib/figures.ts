@@ -59,6 +59,13 @@ export const getSearchText = (figure: FigureEntry) =>
         event.note,
       ]) ?? []
     ),
+    ...(
+      figure.data.storySeeds?.flatMap((seed) => [
+        seed.title,
+        seed.prompt,
+        seed.note,
+      ]) ?? []
+    ),
   ]
     .filter(Boolean)
     .join(" ")
@@ -106,6 +113,15 @@ export const getSearchBuckets = (figure: FigureEntry) => {
           event.label,
           event.place,
           event.note,
+        ]) ?? [],
+    },
+    {
+      label: "Story seeds",
+      values:
+        figure.data.storySeeds?.flatMap((seed) => [
+          seed.title,
+          seed.prompt,
+          seed.note,
         ]) ?? [],
     },
   ];

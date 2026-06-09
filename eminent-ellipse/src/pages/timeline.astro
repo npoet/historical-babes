@@ -23,6 +23,9 @@ const workNote = (work: string | { note?: string }) =>
   typeof work === "string" ? "" : work.note ?? "";
 const workStatus = (work: string | { status?: "reviewed" | "approximate" | "needs-source" }) =>
   typeof work === "string" ? undefined : work.status;
+const seedYear = (seed: { year?: number; startYear?: number }) => seed.year ?? seed.startYear;
+const seedEndYear = (seed: { year?: number; startYear?: number; endYear?: number }) =>
+  seed.endYear ?? seed.year ?? seed.startYear;
 const figureRows = figures.map((figure) => {
   const startYear = getStartYear(figure);
   const endYear = typeof figure.data.deathYear === "number" ? figure.data.deathYear : startYear;
@@ -106,7 +109,32 @@ const eventRows = figures.flatMap((figure) =>
     href: `/${figure.id}`,
   })) ?? []
 );
-const rows = [...figureRows, ...workRows, ...placeRows, ...eventRows].sort((a, b) => {
+const seedRows = figures.flatMap((figure) =>
+  figure.data.storySeeds
+    ?.filter((seed) => typeof seedYear(seed) === "number")
+    .map((seed) => ({
+      id: `${figure.id}-story-${seed.title}`,
+      figureId: figure.id,
+      name: seed.title,
+      figureName: figure.data.name,
+      startYear: seedYear(seed),
+      endYear: seedEndYear(seed),
+      label: [seedYear(seed), seedEndYear(seed)]
+        .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
+        .map((year) => formatYear(year))
+        .join("-") || "Unknown date",
+      era: figure.data.era ?? "Unknown era",
+      themes: figure.data.themes ?? [],
+      occupations: getOccupations(figure),
+      status: getStatusLabel(seed.status),
+      summary: seed.prompt,
+      note: seed.note ?? "",
+      type: "story",
+      href: `/${figure.id}`,
+      source: seed.source,
+    })) ?? []
+);
+const rows = [...figureRows, ...workRows, ...placeRows, ...eventRows, ...seedRows].sort((a, b) => {
   const aYear = typeof a.startYear === "number" ? a.startYear : Number.POSITIVE_INFINITY;
   const bYear = typeof b.startYear === "number" ? b.startYear : Number.POSITIVE_INFINITY;
   return aYear - bYear;
@@ -166,6 +194,7 @@ const positionFor = (year?: number) =>
           <option value="work">Important works</option>
           <option value="place">Place moves</option>
           <option value="event">Context events</option>
+          <option value="story">Story seeds</option>
         </select>
       </label>
     </div>
@@ -178,6 +207,35 @@ const positionFor = (year?: number) =>
       <button type="button" data-theme-query="Power and Resistance">Resistance</button>
     </div>
   </section>
+
+  {seedRows.length > 0 && (
+    <section class="story-seeds" aria-labelledby="story-seeds-heading">
+      <div class="section-heading">
+        <div>
+          <span class="beta-label">Curated seeds</span>
+          <h3 id="story-seeds-heading">Story seeds ready for timeline browsing</h3>
+        </div>
+        <span>{seedRows.length} sourced prompts</span>
+      </div>
+
+      <ol class="story-seed-list">
+        {seedRows.map((seed) => (
+          <li>
+            <a href={seed.href}>
+              <strong>{seed.name}</strong>
+              <span>{seed.figureName} · {seed.label}</span>
+            </a>
+            <p>{seed.summary}</p>
+            {seed.note && <small>{seed.note}</small>}
+            <div class="story-seed-meta">
+              <span class="status-pill">{seed.status}</span>
+              <a href={seed.source}>Source</a>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )}
 
   <section class="timeline-scale" style={`--min-year: ${minYear}; --max-year: ${maxYear};`}>
     <div class="timeline-axis">
@@ -203,6 +261,7 @@ const positionFor = (year?: number) =>
             <span>{row.label}</span>
             <span class="status-pill">{row.status}</span>
             {row.summary && <small>{row.summary}</small>}
+            {row.type === "story" && "source" in row && <a href={row.source}>Source</a>}
           </div>
         </li>
       ))}

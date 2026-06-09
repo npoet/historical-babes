@@ -44,6 +44,17 @@ const importantWorkSchema = z.union([
   }),
 ]);
 
+const storySeedSchema = z.object({
+  title: z.string(),
+  year: z.number().int().optional(),
+  startYear: z.number().int().optional(),
+  endYear: z.number().int().optional(),
+  prompt: z.string(),
+  note: z.string().optional(),
+  status: factStatusSchema,
+  source: z.string().url(),
+});
+
 const figureSchema = z.object({
   name: z.string(),
 
@@ -73,6 +84,7 @@ const figureSchema = z.object({
   }),
 
   importantWorks: z.array(importantWorkSchema).optional(),
+  storySeeds: z.array(storySeedSchema).optional(),
 
   references: z
     .array(
