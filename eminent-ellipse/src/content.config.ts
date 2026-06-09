@@ -30,6 +30,20 @@ const contextEventSchema = z.object({
   source: z.string().url().optional(),
 });
 
+const importantWorkSchema = z.union([
+  z.string(),
+  z.object({
+    title: z.string(),
+    year: z.number().int().optional(),
+    startYear: z.number().int().optional(),
+    endYear: z.number().int().optional(),
+    place: z.string().optional(),
+    note: z.string().optional(),
+    status: factStatusSchema.optional(),
+    source: z.string().url().optional(),
+  }),
+]);
+
 const figureSchema = z.object({
   name: z.string(),
 
@@ -44,6 +58,7 @@ const figureSchema = z.object({
   tags: z.array(z.string()).optional(),
   themes: z.array(z.string()).optional(),
   sourceCredit: z.string().optional(),
+  sourceCoverageStatus: factStatusSchema.optional(),
   originalInstagramUrl: z.string().url().optional(),
   draft: z.boolean().optional(),
   reviewed: z.boolean().optional(),
@@ -57,7 +72,7 @@ const figureSchema = z.object({
     alt: z.string(),
   }),
 
-  importantWorks: z.array(z.string()).optional(),
+  importantWorks: z.array(importantWorkSchema).optional(),
 
   references: z
     .array(

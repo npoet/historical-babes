@@ -708,6 +708,14 @@ p + h3 {
   background: rgba(123, 44, 255, 0.12);
 }
 
+.timeline-row.work .timeline-bar {
+  background: rgba(0, 124, 137, 0.12);
+}
+
+.timeline-row.place .timeline-bar {
+  background: rgba(192, 84, 0, 0.12);
+}
+
 .timeline-bar strong,
 .timeline-bar span,
 .timeline-meta span,

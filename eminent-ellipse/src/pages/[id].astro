@@ -51,6 +51,9 @@ const occupations = getOccupations(figure);
 const description =
   figure.data.summary ??
   `Read about ${figure.data.name} in the ${siteConfig.title}.`;
+const importantWorks = figure.data.importantWorks?.map((work) =>
+  typeof work === "string" ? { title: work } : work,
+);
 ---
 
 <BaseLayout
@@ -210,14 +213,24 @@ const description =
       }
 
       {
-        figure.data.importantWorks?.length > 0 && (
+        importantWorks?.length > 0 && (
           <aside class="works">
             <h3>Important Works</h3>
 
             <ul>
-              {figure.data.importantWorks.map(
+              {importantWorks.map(
                 (work) => (
-                  <li>{work}</li>
+                  <li>
+                    <strong>{work.title}</strong>
+                    {(typeof work.year === "number" || typeof work.startYear === "number") && (
+                      <span>{formatYear(work.year ?? work.startYear)}</span>
+                    )}
+                    {work.status && <span class="status-pill">{getStatusLabel(work.status)}</span>}
+                    {work.source && (
+                      <a href={work.source} target="_blank" rel="noopener noreferrer">Source</a>
+                    )}
+                    {work.note && <small>{work.note}</small>}
+                  </li>
                 )
               )}
             </ul>

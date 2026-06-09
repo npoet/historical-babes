@@ -28,6 +28,23 @@ const hasValue = (frontmatter, key) =>
 const hasBlock = (frontmatter, key) =>
   new RegExp(`^${key}:\\s*\\n(?:\\s*-|\\s+\\w+:)`, "m").test(frontmatter);
 
+const blockOf = (frontmatter, key) => {
+  const lines = frontmatter.split("\n");
+  const start = lines.findIndex((line) => line === `${key}:`);
+
+  if (start === -1) return "";
+
+  const block = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^\S/.test(line)) break;
+    block.push(line);
+  }
+
+  return block.join("\n");
+};
+
+const countMatches = (source, pattern) => (source.match(pattern) ?? []).length;
+
 const findings = [];
 const warnings = [];
 const publicFiles = await readMdxFiles(figuresDir);
@@ -55,24 +72,46 @@ for (const file of publicFiles) {
   }
 
   if (!hasValue(frontmatter, "dateStatus")) {
-    warnings.push(`${label}: date metadata has no reviewed/approximate/needs-source status`);
+    findings.push(`${label}: date metadata has no reviewed/approximate/needs-source status`);
   }
 
-  if (/^\s+latitude:\s/m.test(frontmatter) && !/^\s+status:\s*(reviewed|approximate|needs-source)$/m.test(frontmatter)) {
-    warnings.push(`${label}: mapped coordinate metadata has no reliability status`);
+  if (!hasValue(frontmatter, "sourceCoverageStatus")) {
+    findings.push(`${label}: source coverage has no reviewed/approximate/needs-source status`);
   }
 
-  if (hasBlock(frontmatter, "contextEvents") && !/^\s+source:\s*https?:\/\//m.test(frontmatter)) {
-    warnings.push(`${label}: context event metadata has no direct source URL`);
+  const placesBlock = blockOf(frontmatter, "places");
+  const coordinateCount = countMatches(placesBlock, /^\s+latitude:\s/gm);
+  if (coordinateCount > 0) {
+    const placeStatusCount = countMatches(placesBlock, /^\s+status:\s*(reviewed|approximate|needs-source)$/gm);
+    const placeSourceCount = countMatches(placesBlock, /^\s+source:\s*["']?https?:\/\//gm);
+
+    if (placeStatusCount < coordinateCount) {
+      findings.push(`${label}: mapped coordinate metadata has no reliability status`);
+    }
+
+    if (placeSourceCount < coordinateCount) {
+      findings.push(`${label}: mapped coordinate metadata has no direct source URL`);
+    }
   }
 
-  if (hasBlock(frontmatter, "contextEvents") && !/^\s+status:\s*(reviewed|approximate|needs-source)$/m.test(frontmatter)) {
-    warnings.push(`${label}: context timeline metadata has no reliability status`);
+  const contextBlock = blockOf(frontmatter, "contextEvents");
+  const contextEventCount = countMatches(contextBlock, /^\s+-\s+label:/gm);
+  if (contextEventCount > 0) {
+    const contextSourceCount = countMatches(contextBlock, /^\s+source:\s*["']?https?:\/\//gm);
+    const contextStatusCount = countMatches(contextBlock, /^\s+status:\s*(reviewed|approximate|needs-source)$/gm);
+
+    if (contextSourceCount < contextEventCount) {
+      findings.push(`${label}: context event metadata has no direct source URL`);
+    }
+
+    if (contextStatusCount < contextEventCount) {
+      findings.push(`${label}: context timeline metadata has no reliability status`);
+    }
   }
 
-  const referenceCount = (frontmatter.match(/^\s+-\s+title:/gm) ?? []).length;
+  const referenceCount = (frontmatter.match(/^\s*-\s+title:/gm) ?? []).length;
   if (referenceCount < 2) {
-    warnings.push(`${label}: weak source coverage, fewer than two references`);
+    warnings.push(`${label}: weak source coverage, fewer than two references; marked ${hasValue(frontmatter, "sourceCoverageStatus") ? "with status" : "without status"}`);
   }
 }
 

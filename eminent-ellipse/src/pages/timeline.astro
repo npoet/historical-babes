@@ -13,6 +13,16 @@ import {
 } from "../lib/figures";
 
 const figures = await getCollection("figures");
+const workTitle = (work: string | { title: string }) =>
+  typeof work === "string" ? work : work.title;
+const workYear = (work: string | { year?: number; startYear?: number }) =>
+  typeof work === "string" ? undefined : work.year ?? work.startYear;
+const workEndYear = (work: string | { year?: number; startYear?: number; endYear?: number }) =>
+  typeof work === "string" ? undefined : work.endYear ?? work.year ?? work.startYear;
+const workNote = (work: string | { note?: string }) =>
+  typeof work === "string" ? "" : work.note ?? "";
+const workStatus = (work: string | { status?: "reviewed" | "approximate" | "needs-source" }) =>
+  typeof work === "string" ? undefined : work.status;
 const figureRows = figures.map((figure) => {
   const startYear = getStartYear(figure);
   const endYear = typeof figure.data.deathYear === "number" ? figure.data.deathYear : startYear;
@@ -29,8 +39,55 @@ const figureRows = figures.map((figure) => {
     status: getStatusLabel(figure.data.dateStatus),
     summary: figure.data.summary ?? "",
     type: "life",
+    href: `/${figure.id}`,
   };
 });
+const workRows = figures.flatMap((figure) =>
+  figure.data.importantWorks
+    ?.filter((work) => typeof workYear(work) === "number")
+    .map((work) => ({
+      id: `${figure.id}-${workTitle(work)}`,
+      figureId: figure.id,
+      name: workTitle(work),
+      figureName: figure.data.name,
+      startYear: workYear(work),
+      endYear: workEndYear(work),
+      label: [workYear(work), workEndYear(work)]
+        .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
+        .map((year) => formatYear(year))
+        .join("-") || "Unknown date",
+      era: figure.data.era ?? "Unknown era",
+      themes: figure.data.themes ?? [],
+      occupations: getOccupations(figure),
+      status: getStatusLabel(workStatus(work) ?? figure.data.sourceCoverageStatus),
+      summary: workNote(work),
+      type: "work",
+      href: `/${figure.id}`,
+    })) ?? []
+);
+const placeRows = figures.flatMap((figure) =>
+  figure.data.places
+    ?.filter((place) => typeof place.startYear === "number" || typeof place.endYear === "number")
+    .map((place) => ({
+      id: `${figure.id}-${place.name}-${place.startYear ?? place.endYear}`,
+      figureId: figure.id,
+      name: place.name,
+      figureName: figure.data.name,
+      startYear: place.startYear ?? place.endYear,
+      endYear: place.endYear ?? place.startYear,
+      label: [place.startYear, place.endYear]
+        .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
+        .map((year) => formatYear(year))
+        .join("-") || "Unknown date",
+      era: figure.data.era ?? "Unknown era",
+      themes: figure.data.themes ?? [],
+      occupations: getOccupations(figure),
+      status: getStatusLabel(place.status),
+      summary: place.note ?? "",
+      type: "place",
+      href: `/${figure.id}`,
+    })) ?? []
+);
 const eventRows = figures.flatMap((figure) =>
   figure.data.contextEvents?.map((event) => ({
     id: `${figure.id}-${event.label}`,
@@ -46,9 +103,10 @@ const eventRows = figures.flatMap((figure) =>
     status: getStatusLabel(event.status),
     summary: event.note ?? "",
     type: "event",
+    href: `/${figure.id}`,
   })) ?? []
 );
-const rows = [...figureRows, ...eventRows].sort((a, b) => {
+const rows = [...figureRows, ...workRows, ...placeRows, ...eventRows].sort((a, b) => {
   const aYear = typeof a.startYear === "number" ? a.startYear : Number.POSITIVE_INFINITY;
   const bYear = typeof b.startYear === "number" ? b.startYear : Number.POSITIVE_INFINITY;
   return aYear - bYear;
@@ -105,6 +163,8 @@ const positionFor = (year?: number) =>
         <select id="timeline-type">
           <option value="">All timeline notes</option>
           <option value="life">Lifespans</option>
+          <option value="work">Important works</option>
+          <option value="place">Place moves</option>
           <option value="event">Context events</option>
         </select>
       </label>
@@ -135,7 +195,7 @@ const positionFor = (year?: number) =>
           data-year={row.startYear ?? ""}
           style={`--start: ${positionFor(row.startYear)}; --end: ${positionFor(row.endYear)};`}
         >
-          <a href={`/${row.type === "event" ? row.figureId : row.id}`} class="timeline-bar">
+          <a href={row.href} class="timeline-bar">
             <strong>{row.name}</strong>
             {"figureName" in row && <span>{row.figureName}</span>}
           </a>
