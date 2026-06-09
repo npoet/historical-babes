@@ -16,8 +16,13 @@ const mappedPlaces = figures.flatMap((figure) =>
       figureName: figure.data.name,
       imageSrc: figure.data.image.src,
       imageAlt: figure.data.image.alt,
+      lifespan: figure.data.lifespan ?? "",
+      era: figure.data.era ?? "",
       label: place.name,
       type: place.type ?? "place",
+      dateLabel: [place.startYear, place.endYear]
+        .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
+        .join("-"),
       latitude: place.latitude ?? 0,
       longitude: place.longitude ?? 0,
       note: place.note ?? "",
@@ -40,8 +45,13 @@ const eventPlaces = figures.flatMap((figure) =>
         figureName: figure.data.name,
         imageSrc: figure.data.image.src,
         imageAlt: figure.data.image.alt,
+        lifespan: figure.data.lifespan ?? "",
+        era: figure.data.era ?? "",
         label: event.place ?? event.label,
         eventLabel: event.label,
+        dateLabel: [event.year ?? event.startYear, event.endYear]
+          .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
+          .join("-"),
         latitude: coordinates?.latitude,
         longitude: coordinates?.longitude,
         note: event.note ?? "",
@@ -105,6 +115,11 @@ const missingCoordinateItems = [
     ></div>
 
     <aside class="map-sidebar">
+      <div class="map-legend" aria-label="Map marker colors">
+        <span><i class="life"></i> Life places</span>
+        <span><i class="event"></i> Context events</span>
+      </div>
+
       <section class="map-browser" aria-labelledby="map-browser-heading">
         <div class="section-heading">
           <div>
@@ -143,7 +158,7 @@ const missingCoordinateItems = [
       <section id="map-detail" class="map-detail" aria-live="polite" tabindex="-1">
         <span class="beta-label">Map data</span>
         <h3>Select a marker</h3>
-        <p class="muted">Life places use pink markers. Context events use purple markers.</p>
+        <p class="muted">Choose from the browser above or select a marker on the map.</p>
       </section>
     </aside>
   </section>
@@ -204,17 +219,37 @@ const missingCoordinateItems = [
       const renderDetail = () => {
         if (!detail) return;
         detail.innerHTML = `
-          <span class="beta-label">${item.kind === "event" ? "Context event" : "Life place"}</span>
-          <img src="${item.imageSrc}" alt="${item.imageAlt}" class="map-detail-image" loading="lazy">
-          <h3>${item.figureName}</h3>
-          <p><strong>${item.eventLabel || item.label}</strong></p>
-          <p>${item.note || "No note yet."}</p>
-          <span class="status-pill">${item.status}</span>
-          <div class="map-detail-links">
-            <a href="/${item.figureId}">Open profile</a>
-            <a href="/timeline#${item.figureId}">Open timeline</a>
+          <button type="button" class="map-popout-close" aria-label="Close map detail">×</button>
+          <div class="map-popout-grid">
+            <img src="${item.imageSrc}" alt="${item.imageAlt}" class="map-detail-image" loading="lazy">
+            <div>
+              <span class="beta-label">${item.kind === "event" ? "Context event" : "Life place"}</span>
+              <h3>${item.figureName}</h3>
+              <p><strong>${item.eventLabel || item.label}</strong></p>
+              <dl class="map-detail-facts">
+                ${item.dateLabel ? `<div><dt>Date</dt><dd>${item.dateLabel}</dd></div>` : ""}
+                ${item.lifespan ? `<div><dt>Life</dt><dd>${item.lifespan}</dd></div>` : ""}
+                ${item.era ? `<div><dt>Era</dt><dd>${item.era}</dd></div>` : ""}
+                <div><dt>Place</dt><dd>${item.label}</dd></div>
+              </dl>
+              <p>${item.note || "No note yet."}</p>
+              <span class="status-pill">${item.status}</span>
+              <div class="map-detail-links">
+                <a href="/${item.figureId}">Open profile</a>
+                <a href="/timeline#${item.figureId}">Open timeline</a>
+              </div>
+            </div>
           </div>
         `;
+        detail.classList.add("active");
+        detail.querySelector(".map-popout-close")?.addEventListener("click", () => {
+          detail.classList.remove("active");
+          detail.innerHTML = `
+            <span class="beta-label">Map data</span>
+            <h3>Select a marker</h3>
+            <p class="muted">Choose from the browser or select a marker on the map.</p>
+          `;
+        });
         marker.openPopup();
         map.setView([item.latitude, item.longitude], Math.max(map.getZoom(), 5), { animate: true });
         detail.focus();

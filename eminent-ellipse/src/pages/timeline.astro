@@ -155,6 +155,14 @@ const importantYear = datedRows.find((row) => row.type === "event")?.startYear ?
 const positionFor = (year?: number) =>
   typeof year === "number" ? `${(((year - minYear) / range) * 100).toFixed(2)}%` : "0%";
 const timelineMidpoint = Math.round((minYear + maxYear) / 2);
+const laneFor = (type: string) =>
+  ({
+    life: 18,
+    work: 38,
+    place: 56,
+    event: 72,
+    story: 86,
+  })[type] ?? 50;
 ---
 
 <BaseLayout title="Archive Timeline" description={`Explore the ${siteConfig.title} by year.`} canonicalPath="/timeline">
@@ -265,7 +273,13 @@ const timelineMidpoint = Math.round((minYear + maxYear) / 2);
       <span class="story">Threads</span>
     </div>
 
-    <ol class="timeline-rows">
+    <div class="timeline-zoom-controls" aria-label="Timeline zoom controls">
+      <button type="button" data-timeline-zoom="out">Full range</button>
+      <button type="button" data-timeline-zoom="life">Lives</button>
+      <button type="button" data-timeline-zoom="dense">Dense years</button>
+    </div>
+
+    <ol class="timeline-rows single-line-timeline" data-zoom="out" data-dense-year={denseYear}>
       {rows.map((row) => (
         <li
           id={row.type === "life" ? row.id : undefined}
@@ -283,7 +297,7 @@ const timelineMidpoint = Math.round((minYear + maxYear) / 2);
           data-href={row.href}
           data-source={row.type === "story" && "source" in row ? row.source : ""}
           data-search={`${row.name} ${"figureName" in row ? row.figureName : ""} ${row.label} ${row.summary} ${row.era} ${row.themes.join(" ")} ${row.occupations.join(" ")} ${row.type}`}
-          style={`--start: ${positionFor(row.startYear)}; --end: ${positionFor(row.endYear)};`}
+          style={`--start: ${positionFor(row.startYear)}; --end: ${positionFor(row.endYear)}; --lane: ${laneFor(row.type)}%;`}
         >
           <button type="button" class="timeline-bar">
             <strong>{row.name}</strong>
@@ -309,8 +323,10 @@ const timelineMidpoint = Math.round((minYear + maxYear) / 2);
   const timelineSearch = document.getElementById("timeline-search") as HTMLInputElement | null;
   const detail = document.getElementById("timeline-detail");
   const rows = document.querySelectorAll<HTMLElement>(".timeline-row");
+  const timeline = document.querySelector<HTMLElement>(".single-line-timeline");
   const jumpButtons = document.querySelectorAll<HTMLButtonElement>("[data-jump-year]");
   const themeButtons = document.querySelectorAll<HTMLButtonElement>("[data-theme-query]");
+  const zoomButtons = document.querySelectorAll<HTMLButtonElement>("[data-timeline-zoom]");
 
   const applyFilters = () => {
     const era = eraFilter?.value ?? "";
@@ -382,7 +398,7 @@ const timelineMidpoint = Math.round((minYear + maxYear) / 2);
     button.addEventListener("click", () => {
       const targetYear = Number(button.dataset.jumpYear ?? "");
       const target = [...rows].find((row) => Number(row.dataset.year) >= targetYear);
-      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     });
   });
 
@@ -391,6 +407,17 @@ const timelineMidpoint = Math.round((minYear + maxYear) / 2);
       if (!themeFilter) return;
       themeFilter.value = button.dataset.themeQuery ?? "";
       applyFilters();
+    });
+  });
+
+  zoomButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!timeline) return;
+      timeline.dataset.zoom = button.dataset.timelineZoom ?? "out";
+      if (button.dataset.timelineZoom === "dense") {
+        const target = [...rows].find((row) => Number(row.dataset.year) >= Number(timeline.dataset.denseYear ?? ""));
+        target?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
     });
   });
 </script>
