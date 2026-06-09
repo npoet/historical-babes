@@ -4,6 +4,8 @@ import { getCollection, render } from "astro:content";
 
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Separator from "../components/Separator.astro";
+import SiteHeader from "../components/SiteHeader.astro"
+import SiteFooter from "../components/SiteFooter.astro"
 
 export const getStaticPaths = async () => {
   const figures = await getCollection("figures");
@@ -40,21 +42,7 @@ const { Content } = await render(figure);
 
 <BaseLayout title={figure.data.name}>
   <section>
-    <header class="title-header">
-      <h2>
-        {figure.data.name}
-      </h2>
-
-      <div>
-        <a href="/">View all</a>
-
-        <span class="faded"> / </span>
-
-        <a href={`/${nextFigure.id}`}>
-          Next figure
-        </a>
-      </div>
-    </header>
+    <SiteHeader />
 
     <Separator />
 
@@ -150,6 +138,7 @@ const { Content } = await render(figure);
       }
     </div>
   </section>
+  <SiteFooter />
 </BaseLayout>
 
 <style>
