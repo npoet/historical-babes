@@ -6,8 +6,20 @@ import SiteFooter from "../components/SiteFooter.astro"
 
 const figures = await getCollection("figures");
 
-// Select first 8 figures for homepage feature
-const featuredFigures = figures.slice(0, 8);
+const featuredIds = [
+  "mar-a-orosa",
+  "ada-lovelace",
+  "elena-zelayeta",
+  "bessie-coleman",
+  "mary-therese-klinker",
+  "go-won-go-mohawk",
+  "adelina-otero-warren",
+  "maria-stewart",
+];
+
+const featuredFigures = figures.filter((figure) =>
+  featuredIds.includes(figure.id)
+);
 
 const stats = {
   figures: figures.length,
