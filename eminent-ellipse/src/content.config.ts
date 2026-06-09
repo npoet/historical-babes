@@ -4,6 +4,33 @@ import { defineCollection, z } from "astro:content";
 import { glob } from "astro/loaders";
 
 const factStatusSchema = z.enum(["reviewed", "approximate", "needs-source"]);
+const sourceStrengthSchema = z.enum(["strong", "partial", "needs-review"]);
+const sourceTypeSchema = z.enum([
+  "primary",
+  "archive",
+  "museum",
+  "book",
+  "article",
+  "reference",
+  "authority",
+]);
+const sourceSupportSchema = z.enum([
+  "dates",
+  "place",
+  "work",
+  "context event",
+  "image",
+  "quote",
+  "background",
+]);
+const connectionReasonSchema = z.enum([
+  "shared theme",
+  "similar work",
+  "same era",
+  "connected place",
+  "shared context event",
+  "historical thread",
+]);
 
 const placeSchema = z.object({
   name: z.string(),
@@ -70,6 +97,8 @@ const figureSchema = z.object({
   themes: z.array(z.string()).optional(),
   sourceCredit: z.string().optional(),
   sourceCoverageStatus: factStatusSchema.optional(),
+  sourceStrength: sourceStrengthSchema.optional(),
+  openQuestions: z.array(z.string()).optional(),
   originalInstagramUrl: z.string().url().optional(),
   draft: z.boolean().optional(),
   reviewed: z.boolean().optional(),
@@ -85,12 +114,27 @@ const figureSchema = z.object({
 
   importantWorks: z.array(importantWorkSchema).optional(),
   storySeeds: z.array(storySeedSchema).optional(),
+  relatedConnections: z
+    .array(
+      z.object({
+        id: z.string(),
+        reasons: z.array(connectionReasonSchema).optional(),
+        note: z.string().optional(),
+      })
+    )
+    .optional(),
 
   references: z
     .array(
       z.object({
         title: z.string(),
         url: z.string().url(),
+        type: sourceTypeSchema.optional(),
+        supports: z.array(sourceSupportSchema).optional(),
+        status: factStatusSchema.optional(),
+        note: z.string().optional(),
+        authorityId: z.string().optional(),
+        authorityUrl: z.string().url().optional(),
       })
     )
     .optional(),

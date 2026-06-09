@@ -100,7 +100,7 @@ const missingCoordinateItems = [
       aria-label="Interactive Historical Babes archive map"
     ></div>
 
-    <aside id="map-detail" class="map-detail" aria-live="polite">
+    <aside id="map-detail" class="map-detail" aria-live="polite" tabindex="-1">
       <span class="beta-label">Map data</span>
       <h3>Select a marker</h3>
       <p class="muted">Life places use pink markers. Context events use purple markers.</p>
@@ -146,6 +146,8 @@ const missingCoordinateItems = [
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
+    const focusByFigure = new Map();
+
     markers.forEach((item) => {
       const marker = window.L.circleMarker([item.latitude, item.longitude], {
         radius: item.kind === "event" ? 7 : 6,
@@ -167,11 +169,21 @@ const missingCoordinateItems = [
         `;
         marker.openPopup();
         map.setView([item.latitude, item.longitude], Math.max(map.getZoom(), 5), { animate: true });
+        detail.focus();
       };
+
+      if (!focusByFigure.has(item.figureId)) {
+        focusByFigure.set(item.figureId, renderDetail);
+      }
 
       marker.bindPopup(`<strong>${item.figureName}</strong><br>${item.eventLabel || item.label}`);
       marker.on("click", renderDetail);
       marker.on("focus", renderDetail);
     });
+
+    const hashFigure = window.location.hash.slice(1);
+    if (hashFigure && focusByFigure.has(hashFigure)) {
+      focusByFigure.get(hashFigure)();
+    }
   }
 </script>

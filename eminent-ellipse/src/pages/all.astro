@@ -6,10 +6,12 @@ import SiteFooter from "../components/SiteFooter.astro"
 import { siteConfig } from "../site.config";
 import {
   getOccupations,
+  getReferenceTypeData,
   getSearchBucketData,
   getSearchText,
   getStartYear,
   reliabilityCopy,
+  sourceFilterOptions,
 } from "../lib/figures";
 
 const figures = await getCollection("figures");
@@ -25,6 +27,52 @@ const occupations = [
 const themes = [
   ...new Set(figures.flatMap((figure) => figure.data.themes ?? []).filter(Boolean)),
 ].sort();
+const places = [
+  ...new Set(figures.flatMap((figure) => figure.data.places?.map((place) => place.name) ?? []).filter(Boolean)),
+].sort();
+const makeExplorationPrompt = ({
+  label,
+  kind,
+  query = "",
+  era = "",
+  theme = "",
+  source = "",
+}: {
+  label: string;
+  kind: string;
+  query?: string;
+  era?: string;
+  theme?: string;
+  source?: string;
+}) => ({ label, kind, query, era, theme, source });
+const explorationPrompts = [
+  ...themes.slice(0, 2).map((theme) => makeExplorationPrompt({
+    label: theme,
+    kind: "Theme",
+    query: theme,
+    theme,
+  })),
+  ...places.slice(0, 2).map((place) => makeExplorationPrompt({
+    label: place,
+    kind: "Place",
+    query: place,
+  })),
+  ...eras.slice(0, 2).map((era) => makeExplorationPrompt({
+    label: era,
+    kind: "Era",
+    era,
+  })),
+  makeExplorationPrompt({
+    label: "Museum/archive",
+    kind: "Source",
+    source: "museum|archive",
+  }),
+  makeExplorationPrompt({
+    label: "Historical thread",
+    kind: "Thread",
+    query: "historical thread",
+  }),
+];
 const timelineFigures = figures
   .map((figure) => ({
     figure,
@@ -153,6 +201,22 @@ const markerStyle = (latitude: number, longitude: number) => {
         <button type="button" data-chip-query="war conflict resistance">War + Conflict</button>
       </div>
 
+      <div class="collection-chips" aria-label="Keep exploring">
+        <span>Keep exploring</span>
+        {explorationPrompts.map((prompt) => (
+          <button
+            type="button"
+            data-chip-query={prompt.query}
+            data-chip-era={prompt.era}
+            data-chip-theme={prompt.theme}
+            data-chip-source={prompt.source}
+          >
+            <small>{prompt.kind}</small>
+            {prompt.label}
+          </button>
+        ))}
+      </div>
+
       <div class="filter-grid" aria-label="Archive filters">
         <label>
           Era
@@ -177,6 +241,16 @@ const markerStyle = (latitude: number, longitude: number) => {
             {themes.map((theme) => <option value={theme}>{theme}</option>)}
           </select>
         </label>
+
+        <label>
+          Source type
+          <select id="source-filter">
+            <option value="">Any source type</option>
+            {sourceFilterOptions.map((option) => (
+              <option value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
       </div>
   </section>
   <section id="figure-grid" class="figure-grid">
@@ -189,6 +263,7 @@ const markerStyle = (latitude: number, longitude: number) => {
         data-era={figure.data.era ?? ""}
         data-occupations={getOccupations(figure).join("|")}
         data-themes={(figure.data.themes ?? []).join("|")}
+        data-sources={getReferenceTypeData(figure)}
       >
         <div class="figure-image">
           <img
@@ -322,6 +397,8 @@ const markerStyle = (latitude: number, longitude: number) => {
     document.getElementById("occupation-filter") as HTMLSelectElement | null;
   const themeFilter =
     document.getElementById("theme-filter") as HTMLSelectElement | null;
+  const sourceFilter =
+    document.getElementById("source-filter") as HTMLSelectElement | null;
 
   const cards =
     document.querySelectorAll<HTMLElement>(".figure-card");
@@ -343,6 +420,8 @@ const markerStyle = (latitude: number, longitude: number) => {
       occupationFilter?.value ?? "";
     const theme =
       themeFilter?.value ?? "";
+    const sourceType =
+      sourceFilter?.value ?? "";
 
     let visible = 0;
 
@@ -353,6 +432,10 @@ const markerStyle = (latitude: number, longitude: number) => {
         card.dataset.occupations || "";
       const themes =
         card.dataset.themes || "";
+      const sources =
+        card.dataset.sources || "";
+      const sourceChoices =
+        sourceType.split("|").filter(Boolean);
       const hint =
         card.querySelector<HTMLElement>(".match-hint");
       const buckets = JSON.parse(card.dataset.searchBuckets || "[]") as {
@@ -364,7 +447,8 @@ const markerStyle = (latitude: number, longitude: number) => {
         search.includes(query) &&
         (!era || card.dataset.era === era) &&
         (!occupation || occupations.split("|").includes(occupation)) &&
-        (!theme || themes.split("|").includes(theme));
+        (!theme || themes.split("|").includes(theme)) &&
+        (!sourceChoices.length || sourceChoices.some((type) => sources.split("|").includes(type)));
 
       card.style.display =
         match ? "" : "none";
@@ -394,16 +478,26 @@ const markerStyle = (latitude: number, longitude: number) => {
     }
   };
 
-  [searchInput, eraFilter, occupationFilter, themeFilter].forEach((control) => {
+  [searchInput, eraFilter, occupationFilter, themeFilter, sourceFilter].forEach((control) => {
     control?.addEventListener("input", applyFilters);
     control?.addEventListener("change", applyFilters);
   });
 
   chipButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      if (!searchInput) return;
-      searchInput.value = button.dataset.chipQuery || "";
-      searchInput.focus();
+      if (searchInput) {
+        searchInput.value = button.dataset.chipQuery || "";
+        searchInput.focus();
+      }
+      if (eraFilter && button.dataset.chipEra !== undefined) {
+        eraFilter.value = button.dataset.chipEra || "";
+      }
+      if (themeFilter && button.dataset.chipTheme !== undefined) {
+        themeFilter.value = button.dataset.chipTheme || "";
+      }
+      if (sourceFilter && button.dataset.chipSource !== undefined) {
+        sourceFilter.value = button.dataset.chipSource || "";
+      }
       applyFilters();
     });
   });

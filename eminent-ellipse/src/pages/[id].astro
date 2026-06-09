@@ -9,10 +9,15 @@ import SiteFooter from "../components/SiteFooter.astro"
 import { siteConfig } from "../site.config";
 import {
   formatYear,
+  getFigureSourceStrength,
+  getFigureSourceStrengthLabel,
+  getGroupedReferences,
   getOccupations,
   getRelatedFigures,
+  getResearchTrailLinks,
   getStatusLabel,
   reliabilityCopy,
+  sourceTypeLabels,
 } from "../lib/figures";
 
 export const getStaticPaths = async () => {
@@ -54,6 +59,20 @@ const description =
 const importantWorks = figure.data.importantWorks?.map((work) =>
   typeof work === "string" ? { title: work } : work,
 );
+const referenceGroups = getGroupedReferences(figure);
+const researchTrailLinks = getResearchTrailLinks(figure);
+const sourceStrength = getFigureSourceStrength(figure);
+const sourceStrengthLabel = getFigureSourceStrengthLabel(figure);
+const whatThisMeans =
+  "Reviewed items have a source behind them. Approximate items are useful context, not final proof. Needs source and beta review labels mark places where the archive is still checking the trail.";
+const reasonLabels = {
+  "shared theme": "Shared theme",
+  "similar work": "Similar work",
+  "same era": "Same era",
+  "connected place": "Connected place",
+  "shared context event": "Shared event",
+  "historical thread": "Historical thread",
+};
 ---
 
 <BaseLayout
@@ -81,6 +100,16 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
 
         {figure.data.summary && <p class="summary">{figure.data.summary}</p>}
         <p class="reliability-note">{reliabilityCopy}</p>
+        <div class="trust-strip" aria-label="Profile trust summary">
+          <span class={`source-strength ${sourceStrength}`}>
+            Sources: {sourceStrengthLabel}
+          </span>
+          <span class="status-pill">{getStatusLabel(figure.data.sourceCoverageStatus)}</span>
+        </div>
+        <details class="trust-explainer">
+          <summary>What this means</summary>
+          <p>{whatThisMeans}</p>
+        </details>
 
         <Content />
 
@@ -239,25 +268,70 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
       }
 
       {
-        figure.data.references?.length > 0 && (
-          <aside class="references">
-            <h3>References</h3>
-
+        figure.data.openQuestions?.length > 0 && (
+          <aside class="open-questions">
+            <h3>Open Questions</h3>
             <ul>
-              {figure.data.references.map(
-                (reference) => (
-                  <li>
-                    <a
-                      href={reference.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+              {figure.data.openQuestions.map((question) => <li>{question}</li>)}
+            </ul>
+          </aside>
+        )
+      }
+
+      {
+        referenceGroups.length > 0 && (
+          <aside class="references">
+            <h3>Sources</h3>
+            <p class="reliability-note compact">Compact source cards show what each link helps support. Authority records are identity trails, not stand-alone proof.</p>
+
+            {referenceGroups.map((group) => (
+              <section class="source-group" aria-label={sourceTypeLabels[group.type]}>
+                <h4>{sourceTypeLabels[group.type]}</h4>
+                <ul class="source-card-list">
+                  {group.references.map((reference) => (
+                    <li class="source-card">
+                      <a
+                        href={reference.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {reference.title}
+                      </a>
+                      <div class="source-meta">
+                        <span class="source-type">{sourceTypeLabels[reference.type ?? group.type]}</span>
+                        <span class="status-pill">{getStatusLabel(reference.status)}</span>
+                      </div>
+                      {reference.supports?.length > 0 && (
+                        <div class="support-list">
+                          {reference.supports.map((support) => <span>{support}</span>)}
+                        </div>
+                      )}
+                      {reference.note && <small>{reference.note}</small>}
+                      {reference.authorityId && <small>Authority ID: {reference.authorityId}</small>}
+                      {reference.authorityUrl && (
+                        <a class="trail-link" href={reference.authorityUrl} target="_blank" rel="noopener noreferrer">
+                          Authority trail
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+
+            {researchTrailLinks.length > 0 && (
+              <div class="research-trail">
+                <h4>Research trail</h4>
+                <p>Start with the strongest trail links if you want to keep digging.</p>
+                <div class="trail-links">
+                  {researchTrailLinks.map((reference) => (
+                    <a href={reference.url} target="_blank" rel="noopener noreferrer">
                       {reference.title}
                     </a>
-                  </li>
-                )
-              )}
-            </ul>
+                  ))}
+                </div>
+              </div>
+            )}
           </aside>
         )
       }
@@ -289,11 +363,17 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
             <h3>Related Babes</h3>
             <ul>
               {relatedFigures.map((related) => (
-                <li>
+                <li class="connection-card">
                   <a href={`/${related.figure.id}`}>{related.figure.data.name}</a>
                   {related.figure.data.lifespan && <span>{related.figure.data.lifespan}</span>}
                   <div class="reason-list">
-                    {related.reasons.map((reason) => <span class="reason-badge">{reason}</span>)}
+                    {related.reasons.map((reason) => <span class="reason-badge">{reasonLabels[reason]}</span>)}
+                  </div>
+                  <p>{related.note ?? `${related.figure.data.name} has a ${related.reasons[0] ? reasonLabels[related.reasons[0]].toLowerCase() : "related archive"} connection with ${figure.data.name}.`}</p>
+                  <div class="connection-links">
+                    <a href={`/${related.figure.id}`}>Profile</a>
+                    <a href={`/map#${related.figure.id}`}>Map focus</a>
+                    <a href={`/timeline#${related.figure.id}`}>Timeline focus</a>
                   </div>
                 </li>
               ))}
@@ -313,6 +393,7 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
       "content"
       "context"
       "works"
+      "questions"
       "references"
       "creator"
       "related";
@@ -327,6 +408,7 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
       grid-template-areas:
         "img img"
         "content works"
+        "content questions"
         "content references"
         "context creator"
         "related related";
@@ -342,6 +424,7 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
 
       grid-template-areas:
         "img content works"
+        "img content questions"
         "img content references"
         "img context creator"
         "img related related";
@@ -363,6 +446,10 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
     margin-top: 2rem;
   }
 
+  .open-questions {
+    grid-area: questions;
+  }
+
   .context {
     grid-area: context;
   }
@@ -376,14 +463,16 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
   }
 
   .works ul,
-  .references ul,
   .context ul,
-  .related ul {
+  .related ul,
+  .open-questions ul {
     padding-left: 1rem;
     line-height: 1.5;
   }
 
-  .context h4 {
+  .context h4,
+  .source-group h4,
+  .research-trail h4 {
     margin: 1.5rem 0 0.5rem;
   }
 
@@ -396,8 +485,104 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
     line-height: 1.4;
   }
 
-  .references a {
+  .trust-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+  }
+
+  .source-strength {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.55rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(0, 124, 137, 0.12);
+    color: var(--color-text);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .source-strength.partial,
+  .source-strength.approximate {
+    background: rgba(192, 84, 0, 0.12);
+  }
+
+  .source-strength.needs-review,
+  .source-strength.needs-source {
+    background: rgba(255, 77, 97, 0.14);
+  }
+
+  .trust-explainer {
+    margin: 0 0 1.5rem;
+    color: var(--color-text-alt);
+    line-height: 1.5;
+  }
+
+  .trust-explainer summary {
+    cursor: pointer;
+    color: var(--color-link);
+    font-weight: 800;
+  }
+
+  .source-card-list,
+  .related ul {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .source-card,
+  .connection-card {
+    padding: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+
+  .source-card a,
+  .trail-links a {
     word-break: break-word;
+    font-weight: 800;
+  }
+
+  .source-meta,
+  .support-list,
+  .trail-links,
+  .connection-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.55rem;
+  }
+
+  .source-type,
+  .support-list span {
+    display: inline-flex;
+    min-height: 1.45rem;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    color: var(--color-text-alt);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .source-card small,
+  .research-trail p,
+  .connection-card p {
+    display: block;
+    margin: 0.65rem 0 0;
+    color: var(--color-text-alt);
+    font-size: 0.85rem;
+    line-height: 1.45;
+  }
+
+  .trail-link,
+  .connection-links a {
+    font-size: 0.82rem;
   }
 
   .reason-list {

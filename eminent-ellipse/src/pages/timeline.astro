@@ -246,6 +246,7 @@ const positionFor = (year?: number) =>
     <ol class="timeline-rows">
       {rows.map((row) => (
         <li
+          id={row.type === "life" ? row.id : undefined}
           class={`timeline-row ${row.type}`}
           data-era={row.era}
           data-themes={row.themes.join("|")}

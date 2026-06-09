@@ -44,6 +44,30 @@ const blockOf = (frontmatter, key) => {
 };
 
 const countMatches = (source, pattern) => (source.match(pattern) ?? []).length;
+const lineHasSource = (line) => /^\s+source:\s*["']?https?:\/\//.test(line);
+const lineHasStatus = (line) => /^\s+status:\s*(reviewed|approximate|needs-source)$/.test(line);
+
+const countReviewedItemsWithoutSource = (block) => {
+  const lines = block.split("\n");
+  let missing = 0;
+  let itemHasReviewedStatus = false;
+  let itemHasSource = false;
+
+  const flush = () => {
+    if (itemHasReviewedStatus && !itemHasSource) missing++;
+    itemHasReviewedStatus = false;
+    itemHasSource = false;
+  };
+
+  for (const line of lines) {
+    if (/^\s+-\s+/.test(line)) flush();
+    if (lineHasStatus(line) && line.includes("reviewed")) itemHasReviewedStatus = true;
+    if (lineHasSource(line)) itemHasSource = true;
+  }
+
+  flush();
+  return missing;
+};
 
 const findings = [];
 const warnings = [];
@@ -129,9 +153,30 @@ for (const file of publicFiles) {
     }
   }
 
-  const referenceCount = (frontmatter.match(/^\s*-\s+title:/gm) ?? []).length;
+  const referencesBlock = blockOf(frontmatter, "references");
+  const referenceCount = countMatches(referencesBlock, /^\s+-\s+title:/gm);
+  const typedReferenceCount = countMatches(referencesBlock, /^\s+type:\s*(primary|archive|museum|book|article|reference|authority)$/gm);
+
+  if (/^sourceStrength:\s*strong$/m.test(frontmatter) && referenceCount < 2) {
+    findings.push(`${label}: strong source strength needs at least two references`);
+  }
+
+  if (referenceCount > 0 && typedReferenceCount === 0) {
+    warnings.push(`${label}: references have no source type metadata; fallback inference will be used`);
+  }
+
   if (referenceCount < 2) {
     warnings.push(`${label}: weak source coverage, fewer than two references; marked ${hasValue(frontmatter, "sourceCoverageStatus") ? "with status" : "without status"}`);
+  }
+
+  const unsourcedReviewedFacts =
+    countReviewedItemsWithoutSource(placesBlock) +
+    countReviewedItemsWithoutSource(contextBlock) +
+    countReviewedItemsWithoutSource(storySeedBlock) +
+    countReviewedItemsWithoutSource(blockOf(frontmatter, "importantWorks"));
+
+  if (unsourcedReviewedFacts > 0) {
+    findings.push(`${label}: reviewed fact metadata has no direct source URL`);
   }
 }
 
