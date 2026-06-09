@@ -10,8 +10,15 @@ import ThemeToggle from "./ThemeToggle.astro";
         </a>
       </h1>
 
+     <button
+        id="mobile-menu-toggle"
+        class="mobile-menu-toggle"
+        aria-label="Open menu"
+      >
+        ☰
+      </button>
 
-    <nav class="main-nav">
+    <nav class="main-nav" id="main-nav">
       <a href="/">Home</a>
       <a href="/all">All Babes</a>
     </nav>
@@ -21,3 +28,15 @@ import ThemeToggle from "./ThemeToggle.astro";
     </div>
 
 </header>
+
+<script>
+  const menuToggle =
+    document.getElementById("mobile-menu-toggle");
+
+  const nav =
+    document.getElementById("main-nav");
+
+  menuToggle?.addEventListener("click", () => {
+    nav?.classList.toggle("mobile-open");
+  });
+</script>

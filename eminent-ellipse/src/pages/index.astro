@@ -3,6 +3,7 @@ import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
+import FeaturedCarousel from "../components/FeaturedCarousel.astro"
 
 const figures = await getCollection("figures");
 
@@ -52,32 +53,7 @@ const stats = {
       <a href="/all">View all →</a>
     </div>
 
-    <div class="featured-carousel">
-      {featuredFigures.map((figure) => (
-        <a
-          href={`/${figure.id}`}
-          class="featured-card"
-        >
-          <div class="featured-image">
-            <img
-              src={figure.data.image.src}
-              alt={figure.data.image.alt}
-              loading="lazy"
-            />
-          </div>
-
-          <div class="featured-info">
-            <strong>{figure.data.name}</strong>
-
-            {
-              figure.data.lifespan && (
-                <span>{figure.data.lifespan}</span>
-              )
-            }
-          </div>
-        </a>
-      ))}
-    </div>
+    <FeaturedCarousel figures={featuredFigures} />
   </section>
 
   <section class="homepage-section about-section">
