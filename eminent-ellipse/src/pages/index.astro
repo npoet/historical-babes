@@ -4,6 +4,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
 import FeaturedCarousel from "../components/FeaturedCarousel.astro"
+import { siteConfig } from "../site.config";
 
 const figures = await getCollection("figures");
 
@@ -29,7 +30,11 @@ const stats = {
 };
 ---
 
-<BaseLayout title="Historical Babes">
+<BaseLayout
+  title={siteConfig.title}
+  description={siteConfig.description}
+  canonicalPath="/"
+>
   <SiteHeader />
 
   <section class="landing-hero">
@@ -109,6 +114,26 @@ const stats = {
     <p>
      From ancient rulers and philosophers to modern scientists, artists, and civil rights leaders, the archive highlights individuals whose actions and ideas continue to shape our world.
     </p>
+  </section>
+
+  <section class="homepage-section creator-section">
+    <div>
+      <h3>Follow The Archive</h3>
+      <p>
+        Amelia shares new historical finds, behind-the-scenes research, and archive updates on her public profiles.
+      </p>
+    </div>
+
+    <div class="cta-links">
+      <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
+      <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      {siteConfig.newsletterUrl && (
+        <a href={siteConfig.newsletterUrl} target="_blank" rel="noopener noreferrer">Newsletter</a>
+      )}
+      {siteConfig.supportUrl && (
+        <a href={siteConfig.supportUrl} target="_blank" rel="noopener noreferrer">Support</a>
+      )}
+    </div>
   </section>
 
   <SiteFooter />
@@ -249,6 +274,25 @@ const stats = {
     color: var(--color-text-alt);
   }
 
+  .creator-section {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    align-items: center;
+
+    padding: 2rem 0;
+
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .creator-section p {
+    max-width: 620px;
+    margin: 0;
+    line-height: 1.6;
+    color: var(--color-text-alt);
+  }
+
   @media (max-width: 768px) {
     .stats-section {
       grid-template-columns: 1fr;
@@ -262,6 +306,11 @@ const stats = {
 
     .featured-card {
       flex-basis: 180px;
+    }
+
+    .creator-section {
+      flex-direction: column;
+      align-items: flex-start;
     }
   }
 </style>

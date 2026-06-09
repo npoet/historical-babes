@@ -1,3 +1,7 @@
+---
+import { siteConfig } from "../site.config";
+---
+
 <footer class="site-footer">
   <div class="footer-right">
       <div class="footer-credit">
@@ -24,10 +28,10 @@
 
   <div class="footer-right">
       <div>
-        © 2026 Amelia Poet
+        © 2026 {siteConfig.creator.name}
       </div>
       <a
-        href="https://www.instagram.com/ameliap0et"
+        href={siteConfig.creator.instagramUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Instagram"
@@ -67,7 +71,7 @@
       </a>
 
       <a
-        href="https://www.linkedin.com/in/amelia-poet-9a2201109/"
+        href={siteConfig.creator.linkedInUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="LinkedIn"

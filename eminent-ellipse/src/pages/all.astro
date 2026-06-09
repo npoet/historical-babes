@@ -3,31 +3,171 @@ import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
+import { siteConfig } from "../site.config";
+import { getOccupations, getSearchText, getStartYear } from "../lib/figures";
 
 const figures = await getCollection("figures");
 
 figures.sort((a, b) =>
   a.data.name.localeCompare(b.data.name)
 );
+
+const eras = [...new Set(figures.map((figure) => figure.data.era).filter(Boolean))].sort();
+const occupations = [
+  ...new Set(figures.flatMap((figure) => getOccupations(figure)).filter(Boolean)),
+].sort();
+const themes = [
+  ...new Set(figures.flatMap((figure) => figure.data.themes ?? []).filter(Boolean)),
+].sort();
+const timelineFigures = figures
+  .map((figure) => ({
+    figure,
+    startYear: getStartYear(figure),
+  }))
+  .filter((item) => typeof item.startYear === "number")
+  .sort((a, b) => (a.startYear ?? 0) - (b.startYear ?? 0));
+const mappedPlaces = figures.flatMap((figure) =>
+  figure.data.places
+    ?.filter((place) => typeof place.latitude === "number" && typeof place.longitude === "number")
+    .map((place) => ({
+      figure,
+      place,
+      latitude: place.latitude ?? 0,
+      longitude: place.longitude ?? 0,
+      label: place.name,
+      note: place.note,
+      kind: place.type ?? "place",
+    })) ?? []
+);
+const coordinateByPlace = new Map(
+  mappedPlaces.map((item) => [
+    item.place.name,
+    {
+      latitude: item.latitude,
+      longitude: item.longitude,
+    },
+  ])
+);
+const contextEventPlaces = figures.flatMap((figure) =>
+  figure.data.contextEvents
+    ?.filter((event) => event.place)
+    .map((event) => {
+      const coordinates = coordinateByPlace.get(event.place ?? "");
+
+      return {
+        figure,
+        event,
+        coordinates,
+      };
+    }) ?? []
+);
+const eventMarkers = contextEventPlaces
+  .filter((item) => item.coordinates)
+  .map(({ figure, event, coordinates }) => ({
+    figure,
+    latitude: coordinates?.latitude ?? 0,
+    longitude: coordinates?.longitude ?? 0,
+    label: event.place ?? event.label,
+    note: event.note,
+    kind: "event",
+    eventLabel: event.label,
+  }));
+const mapMarkers = [...mappedPlaces, ...eventMarkers].sort((a, b) =>
+  a.figure.data.name.localeCompare(b.figure.data.name)
+);
+const missingCoordinateItems = [
+  ...figures.flatMap((figure) =>
+    figure.data.places
+      ?.filter((place) => typeof place.latitude !== "number" || typeof place.longitude !== "number")
+      .map((place) => ({
+        figure,
+        label: place.name,
+        note: place.note ?? "Place metadata is present, but coordinates have not been reviewed yet.",
+      })) ?? []
+  ),
+  ...contextEventPlaces
+    .filter((item) => !item.coordinates)
+    .map(({ figure, event }) => ({
+      figure,
+      label: event.place ?? event.label,
+      note: `${event.label} has a place note but no reviewed coordinates yet.`,
+    })),
+];
+const markerStyle = (latitude: number, longitude: number) => {
+  const left = ((longitude + 180) / 360) * 100;
+  const top = ((90 - latitude) / 180) * 100;
+
+  return `left: ${left.toFixed(2)}%; top: ${top.toFixed(2)}%;`;
+};
 ---
 
-<BaseLayout title="Historical Babes">
+<BaseLayout
+  title="All Babes"
+  description={`Search and filter ${figures.length} entries in the ${siteConfig.title}.`}
+  canonicalPath="/all"
+>
  <SiteHeader />
+  <section class="archive-hero">
+    <div>
+      <h2>Archive</h2>
+      <p>
+        Search names, places, eras, occupations, themes, and notes across the growing Historical Babes collection.
+      </p>
+    </div>
+
+    <div class="creator-cta compact">
+      <span>More research and process notes from {siteConfig.creator.name}</span>
+      <div class="cta-links">
+        <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      </div>
+    </div>
+  </section>
+
   <section class="search-section">
       <input
         id="figure-search"
         type="search"
-        placeholder="Search"
+        placeholder="Search names, places, occupations, themes..."
         class="search-input"
         aria-label="Search historical figures"
       />
+
+      <div class="filter-grid" aria-label="Archive filters">
+        <label>
+          Era
+          <select id="era-filter">
+            <option value="">Any era</option>
+            {eras.map((era) => <option value={era}>{era}</option>)}
+          </select>
+        </label>
+
+        <label>
+          Occupation
+          <select id="occupation-filter">
+            <option value="">Any occupation</option>
+            {occupations.map((occupation) => <option value={occupation}>{occupation}</option>)}
+          </select>
+        </label>
+
+        <label>
+          Theme
+          <select id="theme-filter">
+            <option value="">Any theme</option>
+            {themes.map((theme) => <option value={theme}>{theme}</option>)}
+          </select>
+        </label>
+      </div>
   </section>
   <section id="figure-grid" class="figure-grid">
     {figures.map((figure) => (
       <a
         href={`/${figure.id}`}
         class="figure-card"
-        data-name={figure.data.name.toLowerCase()}
+        data-search={getSearchText(figure)}
+        data-era={figure.data.era ?? ""}
+        data-occupations={getOccupations(figure).join("|")}
+        data-themes={(figure.data.themes ?? []).join("|")}
       >
         <div class="figure-image">
           <img
@@ -45,6 +185,12 @@ figures.sort((a, b) =>
               <span>{figure.data.lifespan}</span>
             )
           }
+
+          {
+            figure.data.summary && (
+              <p>{figure.data.summary}</p>
+            )
+          }
         </div>
       </a>
     ))}
@@ -58,15 +204,99 @@ figures.sort((a, b) =>
 
       <p>No babes match your search.</p>
     </div>
+
+  <section class="archive-panel">
+    <div class="section-heading">
+      <h3>Timeline</h3>
+      <span>{timelineFigures.length} dated entries</span>
+    </div>
+
+    <ol class="timeline-list">
+      {timelineFigures.map(({ figure, startYear }) => (
+        <li>
+          <a href={`/${figure.id}`}>{figure.data.name}</a>
+          <span>{figure.data.lifespan ?? startYear}</span>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="archive-panel">
+    <div class="section-heading">
+      <h3>Map</h3>
+      <span>{mapMarkers.length} mapped notes, {missingCoordinateItems.length} awaiting coordinates</span>
+    </div>
+
+    {
+      mapMarkers.length > 0 ? (
+        <div class="archive-map" aria-label="Mapped archive places">
+          <div class="map-canvas">
+            <div class="map-grid" aria-hidden="true"></div>
+            {mapMarkers.map((marker) => (
+              <a
+                href={`/${marker.figure.id}`}
+                class={`map-marker ${marker.kind === "event" ? "event" : ""}`}
+                style={markerStyle(marker.latitude, marker.longitude)}
+                aria-label={`${marker.figure.data.name}: ${marker.label}`}
+              >
+                <span>
+                  <strong>{marker.figure.data.name}</strong>
+                  <small>{marker.eventLabel ?? marker.label}</small>
+                </span>
+              </a>
+            ))}
+          </div>
+
+          <ul class="map-list">
+            {mapMarkers.map((marker) => (
+              <li>
+                <a href={`/${marker.figure.id}`}>{marker.figure.data.name}</a>
+                <span>{marker.label}</span>
+                {marker.eventLabel && <small>{marker.eventLabel}</small>}
+                {marker.note && <small>{marker.note}</small>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p class="muted">Map-ready place notes will appear here as entries gain coordinates.</p>
+      )
+    }
+
+    {
+      missingCoordinateItems.length > 0 && (
+        <details class="missing-map-data">
+          <summary>Entries with place notes awaiting reviewed coordinates</summary>
+
+          <ul class="map-list compact">
+            {missingCoordinateItems.map((item) => (
+              <li>
+                <a href={`/${item.figure.id}`}>{item.figure.data.name}</a>
+                <span>{item.label}</span>
+                <small>{item.note}</small>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )
+    }
+  </section>
+
   <SiteFooter />
 </BaseLayout>
 
 <script>
   const searchInput =
-    document.getElementById("figure-search");
+    document.getElementById("figure-search") as HTMLInputElement | null;
+  const eraFilter =
+    document.getElementById("era-filter") as HTMLSelectElement | null;
+  const occupationFilter =
+    document.getElementById("occupation-filter") as HTMLSelectElement | null;
+  const themeFilter =
+    document.getElementById("theme-filter") as HTMLSelectElement | null;
 
   const cards =
-    document.querySelectorAll(".figure-card");
+    document.querySelectorAll<HTMLElement>(".figure-card");
 
   const noResults =
     document.getElementById("no-results");
@@ -74,18 +304,31 @@ figures.sort((a, b) =>
   const grid =
     document.getElementById("figure-grid");
 
-  searchInput?.addEventListener("input", (e) => {
+  const applyFilters = () => {
     const query =
-      e.target.value.toLowerCase().trim();
+      searchInput?.value.toLowerCase().trim() ?? "";
+    const era =
+      eraFilter?.value ?? "";
+    const occupation =
+      occupationFilter?.value ?? "";
+    const theme =
+      themeFilter?.value ?? "";
 
     let visible = 0;
 
     cards.forEach((card) => {
-      const name =
-        card.dataset.name || "";
+      const search =
+        card.dataset.search || "";
+      const occupations =
+        card.dataset.occupations || "";
+      const themes =
+        card.dataset.themes || "";
 
       const match =
-        name.includes(query);
+        search.includes(query) &&
+        (!era || card.dataset.era === era) &&
+        (!occupation || occupations.split("|").includes(occupation)) &&
+        (!theme || themes.split("|").includes(theme));
 
       card.style.display =
         match ? "" : "none";
@@ -94,11 +337,16 @@ figures.sort((a, b) =>
     });
 
     if (visible === 0) {
-      noResults.classList.remove("hidden");
-      grid.classList.add("hidden");
+      noResults?.classList.remove("hidden");
+      grid?.classList.add("hidden");
     } else {
-      noResults.classList.add("hidden");
-      grid.classList.remove("hidden");
+      noResults?.classList.add("hidden");
+      grid?.classList.remove("hidden");
     }
+  };
+
+  [searchInput, eraFilter, occupationFilter, themeFilter].forEach((control) => {
+    control?.addEventListener("input", applyFilters);
+    control?.addEventListener("change", applyFilters);
   });
 </script>

@@ -6,6 +6,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Separator from "../components/Separator.astro";
 import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
+import { siteConfig } from "../site.config";
+import { getOccupations, getRelatedFigures } from "../lib/figures";
 
 export const getStaticPaths = async () => {
   const figures = await getCollection("figures");
@@ -38,9 +40,20 @@ const nextFigure =
   ];
 
 const { Content } = await render(figure);
+const relatedFigures = getRelatedFigures(figure, figures);
+const occupations = getOccupations(figure);
+const description =
+  figure.data.summary ??
+  `Read about ${figure.data.name} in the ${siteConfig.title}.`;
 ---
 
-<BaseLayout title={figure.data.name}>
+<BaseLayout
+  title={figure.data.name}
+  description={description}
+  image={figure.data.image.src}
+  canonicalPath={`/${figure.id}`}
+  type="article"
+>
   <section>
     <SiteHeader />
 
@@ -55,6 +68,8 @@ const { Content } = await render(figure);
 
       <div class="content">
         <h3>Biography</h3>
+
+        {figure.data.summary && <p class="summary">{figure.data.summary}</p>}
 
         <Content />
 
@@ -78,10 +93,10 @@ const { Content } = await render(figure);
           }
 
           {
-            figure.data.occupation && (
+            occupations.length > 0 && (
               <>
-                <dt>Occupation</dt>
-                <dd>{figure.data.occupation}</dd>
+                <dt>Occupations</dt>
+                <dd>{occupations.join(", ")}</dd>
               </>
             )
           }
@@ -94,8 +109,82 @@ const { Content } = await render(figure);
               </>
             )
           }
+
+          {
+            typeof figure.data.birthYear === "number" && (
+              <>
+                <dt>Born</dt>
+                <dd>{figure.data.birthYear}</dd>
+              </>
+            )
+          }
+
+          {
+            typeof figure.data.deathYear === "number" && (
+              <>
+                <dt>Died</dt>
+                <dd>{figure.data.deathYear}</dd>
+              </>
+            )
+          }
+
+          {
+            figure.data.tags?.length > 0 && (
+              <>
+                <dt>Tags</dt>
+                <dd>{figure.data.tags.join(", ")}</dd>
+              </>
+            )
+          }
+
+          {
+            figure.data.themes?.length > 0 && (
+              <>
+                <dt>Themes</dt>
+                <dd>{figure.data.themes.join(", ")}</dd>
+              </>
+            )
+          }
         </dl>
       </div>
+
+      {
+        (figure.data.places?.length > 0 || figure.data.contextEvents?.length > 0) && (
+          <aside class="context">
+            <h3>Context</h3>
+
+            {figure.data.places?.length > 0 && (
+              <>
+                <h4>Places</h4>
+                <ul>
+                  {figure.data.places.map((place) => (
+                    <li>
+                      <strong>{place.name}</strong>
+                      {place.type && <span>{place.type}</span>}
+                      {place.note && <small>{place.note}</small>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {figure.data.contextEvents?.length > 0 && (
+              <>
+                <h4>Events</h4>
+                <ul>
+                  {figure.data.contextEvents.map((event) => (
+                    <li>
+                      <strong>{event.label}</strong>
+                      <span>{event.year ?? [event.startYear, event.endYear].filter(Boolean).join("-")}</span>
+                      {event.note && <small>{event.note}</small>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </aside>
+        )
+      }
 
       {
         figure.data.importantWorks?.length > 0 && (
@@ -136,6 +225,42 @@ const { Content } = await render(figure);
           </aside>
         )
       }
+
+      <aside class="creator-cta">
+        <h3>Follow The Archive</h3>
+        <p>More finds and process notes from {siteConfig.creator.name}.</p>
+
+        <div class="cta-links">
+          <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
+          <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        </div>
+
+        {figure.data.originalInstagramUrl && (
+          <a
+            href={figure.data.originalInstagramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Original Instagram post
+          </a>
+        )}
+      </aside>
+
+      {
+        relatedFigures.length > 0 && (
+          <aside class="related">
+            <h3>Related Babes</h3>
+            <ul>
+              {relatedFigures.map((related) => (
+                <li>
+                  <a href={`/${related.id}`}>{related.data.name}</a>
+                  {related.data.lifespan && <span>{related.data.lifespan}</span>}
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )
+      }
     </div>
   </section>
   <SiteFooter />
@@ -146,8 +271,11 @@ const { Content } = await render(figure);
     grid-template-areas:
       "img"
       "content"
+      "context"
       "works"
-      "references";
+      "references"
+      "creator"
+      "related";
 
     grid-template-columns: 100%;
   }
@@ -159,7 +287,9 @@ const { Content } = await render(figure);
       grid-template-areas:
         "img img"
         "content works"
-        "content references";
+        "content references"
+        "context creator"
+        "related related";
     }
   }
 
@@ -172,8 +302,16 @@ const { Content } = await render(figure);
 
       grid-template-areas:
         "img content works"
-        "img content references";
+        "img content references"
+        "img context creator"
+        "img related related";
     }
+  }
+
+  .summary {
+    color: var(--color-text-alt);
+    font-size: 1.05rem;
+    line-height: 1.6;
   }
 
   .works {
@@ -185,10 +323,37 @@ const { Content } = await render(figure);
     margin-top: 2rem;
   }
 
+  .context {
+    grid-area: context;
+  }
+
+  .creator-cta {
+    grid-area: creator;
+  }
+
+  .related {
+    grid-area: related;
+  }
+
   .works ul,
-  .references ul {
+  .references ul,
+  .context ul,
+  .related ul {
     padding-left: 1rem;
     line-height: 1.5;
+  }
+
+  .context h4 {
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  .context span,
+  .context small,
+  .related span {
+    display: block;
+    color: var(--color-text-alt);
+    font-size: 0.85rem;
+    line-height: 1.4;
   }
 
   .references a {

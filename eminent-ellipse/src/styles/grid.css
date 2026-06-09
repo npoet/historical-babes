@@ -54,7 +54,7 @@
   padding: 0.75rem 0 1.25rem;
 }
 
-.figure-info h2 {
+.figure-info h3 {
   margin: 0 0 0.35rem;
 
   font-size: 0.95rem;
@@ -67,6 +67,15 @@
   color: var(--color-text-alt);
 
   font-size: 0.8rem;
+}
+
+.figure-info p {
+  margin: 0.5rem 0 0;
+
+  color: var(--color-text-alt);
+
+  font-size: 0.8rem;
+  line-height: 1.35;
 }
 
 .works,

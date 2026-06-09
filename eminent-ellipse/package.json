@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "qa:content": "node scripts/qa-content.mjs",
+    "import:drafts": "node scripts/import-drafts.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },
