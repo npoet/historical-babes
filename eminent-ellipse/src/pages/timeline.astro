@@ -26,6 +26,10 @@ const workStatus = (work: string | { status?: "reviewed" | "approximate" | "need
 const seedYear = (seed: { year?: number; startYear?: number }) => seed.year ?? seed.startYear;
 const seedEndYear = (seed: { year?: number; startYear?: number; endYear?: number }) =>
   seed.endYear ?? seed.year ?? seed.startYear;
+const getContextLayer = (label = "") =>
+  /\b(boycott|falls|ratifies|siege|war|movement|revolution|period|amendment)\b/i.test(label)
+    ? "world"
+    : "impact";
 const figureRows = figures.map((figure) => {
   const startYear = getStartYear(figure);
   const endYear = typeof figure.data.deathYear === "number" ? figure.data.deathYear : startYear;
@@ -42,8 +46,9 @@ const figureRows = figures.map((figure) => {
     status: getStatusLabel(figure.data.dateStatus),
     summary: figure.data.summary ?? "",
     type: "life",
-      href: `/${figure.id}`,
-      scope: "person",
+    href: `/${figure.id}`,
+    scope: "person",
+    layer: "personal",
   };
 });
 const workRows = figures.flatMap((figure) =>
@@ -68,6 +73,7 @@ const workRows = figures.flatMap((figure) =>
       type: "work",
       href: `/${figure.id}`,
       scope: "person",
+      layer: "impact",
     })) ?? []
 );
 const placeRows = figures.flatMap((figure) =>
@@ -92,26 +98,32 @@ const placeRows = figures.flatMap((figure) =>
       type: "place",
       href: `/${figure.id}`,
       scope: "person",
+      layer: "personal",
     })) ?? []
 );
 const eventRows = figures.flatMap((figure) =>
-  figure.data.contextEvents?.map((event) => ({
-    id: `${figure.id}-${event.label}`,
-    figureId: figure.id,
-    name: event.label,
-    figureName: figure.data.name,
-    startYear: event.year ?? event.startYear,
-    endYear: event.endYear ?? event.year ?? event.startYear,
-    label: [event.year ?? event.startYear, event.endYear].filter((year) => typeof year === "number").map((year) => formatYear(year)).join("-") || "Unknown date",
-    era: figure.data.era ?? "Unknown era",
-    themes: figure.data.themes ?? [],
-    occupations: getOccupations(figure),
-    status: getStatusLabel(event.status),
-    summary: event.note ?? "",
-    type: "event",
-    href: `/${figure.id}`,
-    scope: "context",
-  })) ?? []
+  figure.data.contextEvents?.map((event) => {
+    const layer = getContextLayer(event.label);
+
+    return {
+      id: `${figure.id}-${event.label}`,
+      figureId: figure.id,
+      name: event.label,
+      figureName: figure.data.name,
+      startYear: event.year ?? event.startYear,
+      endYear: event.endYear ?? event.year ?? event.startYear,
+      label: [event.year ?? event.startYear, event.endYear].filter((year) => typeof year === "number").map((year) => formatYear(year)).join("-") || "Unknown date",
+      era: figure.data.era ?? "Unknown era",
+      themes: figure.data.themes ?? [],
+      occupations: getOccupations(figure),
+      status: getStatusLabel(event.status),
+      summary: event.note ?? "",
+      type: "event",
+      href: `/${figure.id}`,
+      scope: "context",
+      layer,
+    };
+  }) ?? []
 );
 const seedRows = figures.flatMap((figure) =>
   figure.data.storySeeds
@@ -137,6 +149,7 @@ const seedRows = figures.flatMap((figure) =>
       href: `/${figure.id}`,
       source: seed.source,
       scope: "person",
+      layer: "impact",
     })) ?? []
 );
 const rows = [...figureRows, ...workRows, ...placeRows, ...eventRows, ...seedRows].sort((a, b) => {
@@ -212,7 +225,7 @@ const laneFor = (type: string) =>
           <option value="life">Lifespans</option>
           <option value="work">Important works</option>
           <option value="place">Place moves</option>
-          <option value="event">World/context events</option>
+          <option value="event">Impact + world events</option>
           <option value="story">Historical threads</option>
         </select>
       </label>
@@ -221,8 +234,16 @@ const laneFor = (type: string) =>
     <div class="collection-chips timeline-layer-controls" aria-label="Timeline layers">
       <span>Layers</span>
       <label class="context-toggle">
-        <input id="timeline-context-toggle" type="checkbox" checked />
-        Show world/context events
+        <input type="checkbox" data-timeline-layer="personal" checked />
+        Personal life/place
+      </label>
+      <label class="context-toggle">
+        <input type="checkbox" data-timeline-layer="impact" checked />
+        Impact moments
+      </label>
+      <label class="context-toggle">
+        <input type="checkbox" data-timeline-layer="world" checked />
+        World backdrop
       </label>
     </div>
 
@@ -282,7 +303,7 @@ const laneFor = (type: string) =>
       <span class="life">Lives</span>
       <span class="work">Works</span>
       <span class="place">Places</span>
-      <span class="event">World/context</span>
+      <span class="event">Impact/world</span>
       <span class="story">Threads</span>
     </div>
 
@@ -301,6 +322,7 @@ const laneFor = (type: string) =>
           data-themes={row.themes.join("|")}
           data-type={row.type}
           data-scope={row.scope}
+          data-layer={row.layer}
           data-year={row.startYear ?? ""}
           data-end-year={row.endYear ?? row.startYear ?? ""}
           data-name={row.name}
@@ -310,7 +332,7 @@ const laneFor = (type: string) =>
           data-summary={row.summary}
           data-href={row.href}
           data-source={row.type === "story" && "source" in row ? row.source : ""}
-          data-search={`${row.name} ${"figureName" in row ? row.figureName : ""} ${row.label} ${row.summary} ${row.era} ${row.themes.join(" ")} ${row.occupations.join(" ")} ${row.type} ${row.scope}`}
+          data-search={`${row.name} ${"figureName" in row ? row.figureName : ""} ${row.label} ${row.summary} ${row.era} ${row.themes.join(" ")} ${row.occupations.join(" ")} ${row.type} ${row.scope} ${row.layer}`}
           style={`--start: ${positionFor(row.startYear)}; --end: ${positionFor(row.endYear)}; --lane: ${laneFor(row.type)}%;`}
         >
           <button type="button" class="timeline-bar">
@@ -335,7 +357,7 @@ const laneFor = (type: string) =>
   const themeFilter = document.getElementById("timeline-theme") as HTMLSelectElement | null;
   const typeFilter = document.getElementById("timeline-type") as HTMLSelectElement | null;
   const timelineSearch = document.getElementById("timeline-search") as HTMLInputElement | null;
-  const contextToggle = document.getElementById("timeline-context-toggle") as HTMLInputElement | null;
+  const layerToggles = document.querySelectorAll<HTMLInputElement>("[data-timeline-layer]");
   const detail = document.getElementById("timeline-detail");
   const rows = document.querySelectorAll<HTMLElement>(".timeline-row");
   const timeline = document.querySelector<HTMLElement>(".single-line-timeline");
@@ -348,7 +370,11 @@ const laneFor = (type: string) =>
     const theme = themeFilter?.value ?? "";
     const type = typeFilter?.value ?? "";
     const query = timelineSearch?.value.toLowerCase().trim() ?? "";
-    const showContext = contextToggle?.checked ?? true;
+    const activeLayers = new Set(
+      [...layerToggles]
+        .filter((toggle) => toggle.checked)
+        .map((toggle) => toggle.dataset.timelineLayer ?? "")
+    );
 
     rows.forEach((row) => {
       const themes = row.dataset.themes?.split("|") ?? [];
@@ -357,7 +383,7 @@ const laneFor = (type: string) =>
         (!era || row.dataset.era === era) &&
         (!theme || themes.includes(theme)) &&
         (!type || row.dataset.type === type) &&
-        (showContext || row.dataset.scope !== "context") &&
+        activeLayers.has(row.dataset.layer ?? "") &&
         (!query || searchText.includes(query));
 
       row.classList.toggle("hidden", !matches);
@@ -368,7 +394,7 @@ const laneFor = (type: string) =>
     control?.addEventListener("change", applyFilters);
   });
   timelineSearch?.addEventListener("input", applyFilters);
-  contextToggle?.addEventListener("change", applyFilters);
+  layerToggles.forEach((toggle) => toggle.addEventListener("change", applyFilters));
 
   const renderDetail = (row: HTMLElement) => {
     if (!detail) return;
@@ -389,7 +415,7 @@ const laneFor = (type: string) =>
       : "";
 
     detail.innerHTML = `
-      <span class="beta-label">${row.dataset.scope === "context" ? "World/context event" : row.dataset.type === "story" ? "Historical thread" : row.dataset.type}</span>
+      <span class="beta-label">${row.dataset.layer === "world" ? "World backdrop" : row.dataset.layer === "impact" ? "Impact moment" : row.dataset.type === "story" ? "Historical thread" : "Personal moment"}</span>
       <h3>${row.dataset.name}</h3>
       <p><strong>${row.dataset.figure}</strong> · ${row.dataset.label}</p>
       <p>${row.dataset.summary || "No note yet."}</p>

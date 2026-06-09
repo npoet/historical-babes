@@ -728,6 +728,10 @@ p + h3 {
   background: var(--color-pink);
 }
 
+.map-legend .impact {
+  background: var(--color-red);
+}
+
 .map-legend .event {
   background: var(--color-purple);
 }
@@ -1218,13 +1222,22 @@ p + h3 {
 }
 
 .timeline-row.event .timeline-bar {
-  border: 1px dashed rgba(123, 44, 255, 0.35);
-  background: rgba(123, 44, 255, 0.08);
+  border: 1px dashed rgba(255, 77, 97, 0.35);
+  background: rgba(255, 77, 97, 0.08);
 }
 
 .timeline-row.event {
-  border-top-color: var(--color-purple);
+  border-top-color: var(--color-red);
   opacity: 0.88;
+}
+
+.timeline-row.event[data-layer="world"] .timeline-bar {
+  border-color: rgba(123, 44, 255, 0.35);
+  background: rgba(123, 44, 255, 0.08);
+}
+
+.timeline-row.event[data-layer="world"] {
+  border-top-color: var(--color-purple);
 }
 
 .timeline-row.work .timeline-bar {
