@@ -141,7 +141,7 @@ const rows = [...figureRows, ...workRows, ...placeRows, ...eventRows, ...seedRow
 });
 const datedRows = rows.filter((row) => typeof row.startYear === "number");
 const minYear = Math.min(...datedRows.map((row) => row.startYear ?? 0));
-const maxYear = Math.max(...datedRows.map((row) => row.endYear ?? row.startYear ?? 0));
+const maxYear = Math.max(new Date().getFullYear(), ...datedRows.map((row) => row.endYear ?? row.startYear ?? 0));
 const range = Math.max(1, maxYear - minYear);
 const eras = [...new Set(figureRows.map((row) => row.era))].sort();
 const themes = [...new Set(figureRows.flatMap((row) => row.themes))].sort();
@@ -154,6 +154,7 @@ const denseYear = [...yearBuckets.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
 const importantYear = datedRows.find((row) => row.type === "event")?.startYear ?? denseYear;
 const positionFor = (year?: number) =>
   typeof year === "number" ? `${(((year - minYear) / range) * 100).toFixed(2)}%` : "0%";
+const timelineMidpoint = Math.round((minYear + maxYear) / 2);
 ---
 
 <BaseLayout title="Archive Timeline" description={`Explore the ${siteConfig.title} by year.`} canonicalPath="/timeline">
@@ -187,6 +188,11 @@ const positionFor = (year?: number) =>
       </label>
 
       <label>
+        Search
+        <input id="timeline-search" type="search" placeholder="Try science, London, resistance..." autocomplete="off" />
+      </label>
+
+      <label>
         Type
         <select id="timeline-type">
           <option value="">All timeline notes</option>
@@ -194,7 +200,7 @@ const positionFor = (year?: number) =>
           <option value="work">Important works</option>
           <option value="place">Place moves</option>
           <option value="event">Context events</option>
-          <option value="story">Story seeds</option>
+          <option value="story">Historical threads</option>
         </select>
       </label>
     </div>
@@ -212,8 +218,8 @@ const positionFor = (year?: number) =>
     <section class="story-seeds" aria-labelledby="story-seeds-heading">
       <div class="section-heading">
         <div>
-          <span class="beta-label">Curated seeds</span>
-          <h3 id="story-seeds-heading">Story seeds ready for timeline browsing</h3>
+          <span class="beta-label">Curated threads</span>
+          <h3 id="story-seeds-heading">Historical threads ready for timeline browsing</h3>
         </div>
         <span>{seedRows.length} sourced prompts</span>
       </div>
@@ -237,10 +243,26 @@ const positionFor = (year?: number) =>
     </section>
   )}
 
+  <section class="timeline-board">
+    <aside class="timeline-detail" id="timeline-detail" aria-live="polite" tabindex="-1">
+      <span class="beta-label">Timeline focus</span>
+      <h3>Select a life, work, place, event, or thread</h3>
+      <p class="muted">Use search, filters, or the quick chips to narrow the timeline, then select a marker to see sources and who was alive nearby.</p>
+    </aside>
+
   <section class="timeline-scale" style={`--min-year: ${minYear}; --max-year: ${maxYear};`}>
     <div class="timeline-axis">
       <span>{formatYear(minYear)}</span>
+      <span>{formatYear(timelineMidpoint)}</span>
       <span>{formatYear(maxYear)}</span>
+    </div>
+
+    <div class="timeline-type-key" aria-label="Timeline marker key">
+      <span class="life">Lives</span>
+      <span class="work">Works</span>
+      <span class="place">Places</span>
+      <span class="event">Events</span>
+      <span class="story">Threads</span>
     </div>
 
     <ol class="timeline-rows">
@@ -252,21 +274,29 @@ const positionFor = (year?: number) =>
           data-themes={row.themes.join("|")}
           data-type={row.type}
           data-year={row.startYear ?? ""}
+          data-end-year={row.endYear ?? row.startYear ?? ""}
+          data-name={row.name}
+          data-figure={"figureName" in row ? row.figureName : row.name}
+          data-label={row.label}
+          data-status={row.status}
+          data-summary={row.summary}
+          data-href={row.href}
+          data-source={row.type === "story" && "source" in row ? row.source : ""}
+          data-search={`${row.name} ${"figureName" in row ? row.figureName : ""} ${row.label} ${row.summary} ${row.era} ${row.themes.join(" ")} ${row.occupations.join(" ")} ${row.type}`}
           style={`--start: ${positionFor(row.startYear)}; --end: ${positionFor(row.endYear)};`}
         >
-          <a href={row.href} class="timeline-bar">
+          <button type="button" class="timeline-bar">
             <strong>{row.name}</strong>
             {"figureName" in row && <span>{row.figureName}</span>}
-          </a>
+          </button>
           <div class="timeline-meta">
             <span>{row.label}</span>
             <span class="status-pill">{row.status}</span>
-            {row.summary && <small>{row.summary}</small>}
-            {row.type === "story" && "source" in row && <a href={row.source}>Source</a>}
           </div>
         </li>
       ))}
     </ol>
+  </section>
   </section>
 
   <SiteFooter />
@@ -276,6 +306,8 @@ const positionFor = (year?: number) =>
   const eraFilter = document.getElementById("timeline-era") as HTMLSelectElement | null;
   const themeFilter = document.getElementById("timeline-theme") as HTMLSelectElement | null;
   const typeFilter = document.getElementById("timeline-type") as HTMLSelectElement | null;
+  const timelineSearch = document.getElementById("timeline-search") as HTMLInputElement | null;
+  const detail = document.getElementById("timeline-detail");
   const rows = document.querySelectorAll<HTMLElement>(".timeline-row");
   const jumpButtons = document.querySelectorAll<HTMLButtonElement>("[data-jump-year]");
   const themeButtons = document.querySelectorAll<HTMLButtonElement>("[data-theme-query]");
@@ -284,13 +316,16 @@ const positionFor = (year?: number) =>
     const era = eraFilter?.value ?? "";
     const theme = themeFilter?.value ?? "";
     const type = typeFilter?.value ?? "";
+    const query = timelineSearch?.value.toLowerCase().trim() ?? "";
 
     rows.forEach((row) => {
       const themes = row.dataset.themes?.split("|") ?? [];
+      const searchText = row.dataset.search?.toLowerCase() ?? "";
       const matches =
         (!era || row.dataset.era === era) &&
         (!theme || themes.includes(theme)) &&
-        (!type || row.dataset.type === type);
+        (!type || row.dataset.type === type) &&
+        (!query || searchText.includes(query));
 
       row.classList.toggle("hidden", !matches);
     });
@@ -298,6 +333,49 @@ const positionFor = (year?: number) =>
 
   [eraFilter, themeFilter, typeFilter].forEach((control) => {
     control?.addEventListener("change", applyFilters);
+  });
+  timelineSearch?.addEventListener("input", applyFilters);
+
+  const renderDetail = (row: HTMLElement) => {
+    if (!detail) return;
+    const year = Number(row.dataset.year ?? "");
+    const alive = [...rows]
+      .filter((candidate) => candidate.dataset.type === "life")
+      .filter((candidate) => {
+        const start = Number(candidate.dataset.year ?? "");
+        const end = Number(candidate.dataset.endYear ?? candidate.dataset.year ?? "");
+        return Number.isFinite(year) && Number.isFinite(start) && Number.isFinite(end) && start <= year && end >= year;
+      })
+      .map((candidate) => candidate.dataset.name)
+      .filter(Boolean)
+      .slice(0, 8);
+
+    const source = row.dataset.source
+      ? `<a href="${row.dataset.source}">Open source</a>`
+      : "";
+
+    detail.innerHTML = `
+      <span class="beta-label">${row.dataset.type === "story" ? "Historical thread" : row.dataset.type}</span>
+      <h3>${row.dataset.name}</h3>
+      <p><strong>${row.dataset.figure}</strong> · ${row.dataset.label}</p>
+      <p>${row.dataset.summary || "No note yet."}</p>
+      <span class="status-pill">${row.dataset.status}</span>
+      <div class="timeline-detail-links">
+        <a href="${row.dataset.href}">Open profile</a>
+        ${source}
+      </div>
+      ${
+        alive.length
+          ? `<div class="timeline-alive"><strong>Alive around ${row.dataset.label}</strong><span>${alive.join(", ")}</span></div>`
+          : ""
+      }
+    `;
+    rows.forEach((candidate) => candidate.classList.toggle("selected", candidate === row));
+    detail.focus();
+  };
+
+  rows.forEach((row) => {
+    row.querySelector(".timeline-bar")?.addEventListener("click", () => renderDetail(row));
   });
 
   jumpButtons.forEach((button) => {

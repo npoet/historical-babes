@@ -14,6 +14,8 @@ const mappedPlaces = figures.flatMap((figure) =>
       id: `${figure.id}-${place.name}`,
       figureId: figure.id,
       figureName: figure.data.name,
+      imageSrc: figure.data.image.src,
+      imageAlt: figure.data.image.alt,
       label: place.name,
       type: place.type ?? "place",
       latitude: place.latitude ?? 0,
@@ -36,6 +38,8 @@ const eventPlaces = figures.flatMap((figure) =>
         id: `${figure.id}-${event.label}`,
         figureId: figure.id,
         figureName: figure.data.name,
+        imageSrc: figure.data.image.src,
+        imageAlt: figure.data.image.alt,
         label: event.place ?? event.label,
         eventLabel: event.label,
         latitude: coordinates?.latitude,
@@ -100,10 +104,47 @@ const missingCoordinateItems = [
       aria-label="Interactive Historical Babes archive map"
     ></div>
 
-    <aside id="map-detail" class="map-detail" aria-live="polite" tabindex="-1">
-      <span class="beta-label">Map data</span>
-      <h3>Select a marker</h3>
-      <p class="muted">Life places use pink markers. Context events use purple markers.</p>
+    <aside class="map-sidebar">
+      <section class="map-browser" aria-labelledby="map-browser-heading">
+        <div class="section-heading">
+          <div>
+            <span class="beta-label">Browse the map</span>
+            <h3 id="map-browser-heading">Find a figure before choosing a pin</h3>
+          </div>
+          <span>{mapMarkers.length} mapped notes</span>
+        </div>
+
+        <label class="map-search">
+          Search mapped figures, places, and events
+          <input id="map-search" type="search" placeholder="Try London, resistance, Ada..." autocomplete="off" />
+        </label>
+
+        <ol id="map-browser-list" class="map-browser-list">
+          {mapMarkers.map((item) => (
+            <li>
+              <button
+                type="button"
+                class="map-browser-card"
+                data-marker-id={item.id}
+                data-search={`${item.figureName} ${item.label} ${"eventLabel" in item ? item.eventLabel : ""} ${item.note} ${item.kind}`}
+              >
+                <img src={item.imageSrc} alt="" class="map-browser-thumb" loading="lazy" />
+                <span>
+                  <strong>{item.figureName}</strong>
+                  <small>{("eventLabel" in item && item.eventLabel) || item.label}</small>
+                </span>
+                <span class="reason-badge">{item.kind === "event" ? "Event" : "Place"}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section id="map-detail" class="map-detail" aria-live="polite" tabindex="-1">
+        <span class="beta-label">Map data</span>
+        <h3>Select a marker</h3>
+        <p class="muted">Life places use pink markers. Context events use purple markers.</p>
+      </section>
     </aside>
   </section>
 
@@ -137,6 +178,8 @@ const missingCoordinateItems = [
 <script is:inline>
   const mapEl = document.getElementById("leaflet-map");
   const detail = document.getElementById("map-detail");
+  const search = document.getElementById("map-search");
+  const cards = document.querySelectorAll("[data-marker-id]");
   const markers = JSON.parse(mapEl?.dataset.markers || "[]");
 
   if (mapEl && window.L) {
@@ -147,6 +190,7 @@ const missingCoordinateItems = [
     }).addTo(map);
 
     const focusByFigure = new Map();
+    const focusByMarker = new Map();
 
     markers.forEach((item) => {
       const marker = window.L.circleMarker([item.latitude, item.longitude], {
@@ -161,11 +205,15 @@ const missingCoordinateItems = [
         if (!detail) return;
         detail.innerHTML = `
           <span class="beta-label">${item.kind === "event" ? "Context event" : "Life place"}</span>
+          <img src="${item.imageSrc}" alt="${item.imageAlt}" class="map-detail-image" loading="lazy">
           <h3>${item.figureName}</h3>
           <p><strong>${item.eventLabel || item.label}</strong></p>
           <p>${item.note || "No note yet."}</p>
           <span class="status-pill">${item.status}</span>
-          <a href="/${item.figureId}">Open figure</a>
+          <div class="map-detail-links">
+            <a href="/${item.figureId}">Open profile</a>
+            <a href="/timeline#${item.figureId}">Open timeline</a>
+          </div>
         `;
         marker.openPopup();
         map.setView([item.latitude, item.longitude], Math.max(map.getZoom(), 5), { animate: true });
@@ -175,6 +223,7 @@ const missingCoordinateItems = [
       if (!focusByFigure.has(item.figureId)) {
         focusByFigure.set(item.figureId, renderDetail);
       }
+      focusByMarker.set(item.id, renderDetail);
 
       marker.bindPopup(`<strong>${item.figureName}</strong><br>${item.eventLabel || item.label}`);
       marker.on("click", renderDetail);
@@ -185,5 +234,23 @@ const missingCoordinateItems = [
     if (hashFigure && focusByFigure.has(hashFigure)) {
       focusByFigure.get(hashFigure)();
     }
+
+    cards.forEach((card) => {
+      card.addEventListener("click", () => {
+        const markerId = card.getAttribute("data-marker-id");
+        if (markerId && focusByMarker.has(markerId)) {
+          focusByMarker.get(markerId)();
+        }
+      });
+    });
+
+    search?.addEventListener("input", () => {
+      const query = search.value.toLowerCase().trim();
+      cards.forEach((card) => {
+        const item = card.closest("li");
+        const text = card.getAttribute("data-search")?.toLowerCase() ?? "";
+        item?.classList.toggle("hidden", Boolean(query) && !text.includes(query));
+      });
+    });
   }
 </script>

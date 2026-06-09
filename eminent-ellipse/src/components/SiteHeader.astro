@@ -11,24 +11,24 @@ import ThemeToggle from "./ThemeToggle.astro";
       </a>
     </h1>
 
-    <div>
+    <div class="header-actions">
+      <nav class="main-nav" id="main-nav">
+        <a href="/">Home</a>
+        <a href="/all">All Babes</a>
+        <a href="/map">Map</a>
+        <a href="/timeline">Timeline</a>
+      </nav>
+
       <ThemeToggle />
+
+      <button
+        id="mobile-menu-toggle"
+        class="mobile-menu-toggle"
+        aria-label="Open menu"
+      >
+        ☰
+      </button>
     </div>
-
-    <button
-      id="mobile-menu-toggle"
-      class="mobile-menu-toggle"
-      aria-label="Open menu"
-    >
-      ☰
-    </button>
-
-    <nav class="main-nav" id="main-nav">
-      <a href="/">Home</a>
-      <a href="/all">All Babes</a>
-      <a href="/map">Map</a>
-      <a href="/timeline">Timeline</a>
-    </nav>
   </div>
 </header>
 

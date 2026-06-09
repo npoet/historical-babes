@@ -231,7 +231,7 @@ export const getSearchBuckets = (figure: FigureEntry) => {
         ]) ?? [],
     },
     {
-      label: "Story seeds",
+      label: "Historical threads",
       values:
         figure.data.storySeeds?.flatMap((seed) => [
           seed.title,
