@@ -13,11 +13,21 @@ figures.sort((a, b) =>
 
 <BaseLayout title="Historical Babes">
  <SiteHeader />
-  <section class="figure-grid">
+  <section class="search-section">
+      <input
+        id="figure-search"
+        type="search"
+        placeholder="Search"
+        class="search-input"
+        aria-label="Search historical figures"
+      />
+  </section>
+  <section id="figure-grid" class="figure-grid">
     {figures.map((figure) => (
       <a
         href={`/${figure.id}`}
         class="figure-card"
+        data-name={figure.data.name.toLowerCase()}
       >
         <div class="figure-image">
           <img
@@ -39,5 +49,56 @@ figures.sort((a, b) =>
       </a>
     ))}
   </section>
+  <div id="no-results" class="no-results hidden">
+      <img
+        src="/images/strange-things.gif"
+        alt="No results found"
+        class="no-results-image"
+      />
+
+      <p>No babes match your search.</p>
+    </div>
   <SiteFooter />
 </BaseLayout>
+
+<script>
+  const searchInput =
+    document.getElementById("figure-search");
+
+  const cards =
+    document.querySelectorAll(".figure-card");
+
+  const noResults =
+    document.getElementById("no-results");
+
+  const grid =
+    document.getElementById("figure-grid");
+
+  searchInput?.addEventListener("input", (e) => {
+    const query =
+      e.target.value.toLowerCase().trim();
+
+    let visible = 0;
+
+    cards.forEach((card) => {
+      const name =
+        card.dataset.name || "";
+
+      const match =
+        name.includes(query);
+
+      card.style.display =
+        match ? "" : "none";
+
+      if (match) visible++;
+    });
+
+    if (visible === 0) {
+      noResults.classList.remove("hidden");
+      grid.classList.add("hidden");
+    } else {
+      noResults.classList.add("hidden");
+      grid.classList.remove("hidden");
+    }
+  });
+</script>
