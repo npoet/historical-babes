@@ -3,7 +3,7 @@ name: Deploy Astro Site
 on:
   push:
     branches:
-      - main
+      - production
 
 permissions:
   contents: read
@@ -24,14 +24,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: eminent-ellipse/package-lock.json
 
-      - run: npm ci
+      - working-directory: eminent-ellipse
+        run: npm ci
 
-      - run: npm run build
+      - working-directory: eminent-ellipse
+        run: npm run build
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: ./eminent-ellipse/dist
 
   deploy:
     environment:
