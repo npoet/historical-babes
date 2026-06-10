@@ -5,7 +5,9 @@ import SiteHeader from "../components/SiteHeader.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import { siteConfig } from "../site.config";
 import {
+  contextLayerLabels,
   formatYear,
+  getContextLayer,
   getOccupations,
   getStartYear,
   getStatusLabel,
@@ -26,10 +28,6 @@ const workStatus = (work: string | { status?: "reviewed" | "approximate" | "need
 const seedYear = (seed: { year?: number; startYear?: number }) => seed.year ?? seed.startYear;
 const seedEndYear = (seed: { year?: number; startYear?: number; endYear?: number }) =>
   seed.endYear ?? seed.year ?? seed.startYear;
-const getContextLayer = (label = "") =>
-  /\b(boycott|falls|ratifies|siege|war|movement|revolution|period|amendment)\b/i.test(label)
-    ? "world"
-    : "impact";
 const figureRows = figures.map((figure) => {
   const startYear = getStartYear(figure);
   const endYear = typeof figure.data.deathYear === "number" ? figure.data.deathYear : startYear;
@@ -103,7 +101,7 @@ const placeRows = figures.flatMap((figure) =>
 );
 const eventRows = figures.flatMap((figure) =>
   figure.data.contextEvents?.map((event) => {
-    const layer = getContextLayer(event.label);
+    const layer = getContextLayer(event);
 
     return {
       id: `${figure.id}-${event.label}`,
@@ -120,8 +118,12 @@ const eventRows = figures.flatMap((figure) =>
       summary: event.note ?? "",
       type: "event",
       href: `/${figure.id}`,
+      source: event.source ?? "",
+      thread: event.thread ?? "",
+      importance: event.importance ?? "supporting",
       scope: "context",
       layer,
+      layerLabel: contextLayerLabels[layer],
     };
   }) ?? []
 );
@@ -148,8 +150,11 @@ const seedRows = figures.flatMap((figure) =>
       type: "story",
       href: `/${figure.id}`,
       source: seed.source,
+      thread: seed.title,
+      importance: "major",
       scope: "person",
       layer: "impact",
+      layerLabel: contextLayerLabels.impact,
     })) ?? []
 );
 const rows = [...figureRows, ...workRows, ...placeRows, ...eventRows, ...seedRows].sort((a, b) => {
@@ -163,6 +168,18 @@ const maxYear = Math.max(new Date().getFullYear(), ...datedRows.map((row) => row
 const range = Math.max(1, maxYear - minYear);
 const eras = [...new Set(figureRows.map((row) => row.era))].sort();
 const themes = [...new Set(figureRows.flatMap((row) => row.themes))].sort();
+const eraRanges = eras
+  .map((era) => {
+    const eraRows = datedRows.filter((row) => row.era === era);
+    return {
+      era,
+      startYear: Math.min(...eraRows.map((row) => row.startYear ?? 0)),
+      endYear: Math.max(...eraRows.map((row) => row.endYear ?? row.startYear ?? 0)),
+      count: eraRows.length,
+    };
+  })
+  .filter((era) => Number.isFinite(era.startYear) && Number.isFinite(era.endYear))
+  .sort((a, b) => a.startYear - b.startYear);
 const yearBuckets = new Map<number, number>();
 for (const row of datedRows) {
   const bucket = Math.floor((row.startYear ?? 0) / 50) * 50;
@@ -235,15 +252,15 @@ const laneFor = (type: string) =>
       <span>Layers</span>
       <label class="context-toggle">
         <input type="checkbox" data-timeline-layer="personal" checked />
-        Personal life/place
+        {contextLayerLabels.personal}
       </label>
       <label class="context-toggle">
         <input type="checkbox" data-timeline-layer="impact" checked />
-        Impact moments
+        {contextLayerLabels.impact}
       </label>
       <label class="context-toggle">
         <input type="checkbox" data-timeline-layer="world" checked />
-        World backdrop
+        {contextLayerLabels.world}
       </label>
     </div>
 
@@ -277,6 +294,7 @@ const laneFor = (type: string) =>
             {seed.note && <small>{seed.note}</small>}
             <div class="story-seed-meta">
               <span class="status-pill">{seed.status}</span>
+              <a href={`/timeline?thread=${encodeURIComponent(seed.thread)}#${seed.id}`}>Open thread</a>
               <a href={seed.source}>Source</a>
             </div>
           </li>
@@ -303,8 +321,23 @@ const laneFor = (type: string) =>
       <span class="life">Lives</span>
       <span class="work">Works</span>
       <span class="place">Places</span>
-      <span class="event">Impact/world</span>
+      <span class="event impact">Impact</span>
+      <span class="event world">World</span>
       <span class="story">Threads</span>
+    </div>
+
+    <div class="timeline-era-band" aria-label="Timeline era focus">
+      <button type="button" data-era-focus="">All eras</button>
+      {eraRanges.map((era) => (
+        <button
+          type="button"
+          data-era-focus={era.era}
+          data-era-year={era.startYear}
+        >
+          <strong>{era.era}</strong>
+          <span>{formatYear(era.startYear)}-{formatYear(era.endYear)} · {era.count}</span>
+        </button>
+      ))}
     </div>
 
     <div class="timeline-zoom-controls" aria-label="Timeline zoom controls">
@@ -323,6 +356,9 @@ const laneFor = (type: string) =>
           data-type={row.type}
           data-scope={row.scope}
           data-layer={row.layer}
+          data-layer-label={"layerLabel" in row ? row.layerLabel : contextLayerLabels[row.layer]}
+          data-thread={"thread" in row ? row.thread : ""}
+          data-importance={"importance" in row ? row.importance : ""}
           data-year={row.startYear ?? ""}
           data-end-year={row.endYear ?? row.startYear ?? ""}
           data-name={row.name}
@@ -331,8 +367,8 @@ const laneFor = (type: string) =>
           data-status={row.status}
           data-summary={row.summary}
           data-href={row.href}
-          data-source={row.type === "story" && "source" in row ? row.source : ""}
-          data-search={`${row.name} ${"figureName" in row ? row.figureName : ""} ${row.label} ${row.summary} ${row.era} ${row.themes.join(" ")} ${row.occupations.join(" ")} ${row.type} ${row.scope} ${row.layer}`}
+          data-source={"source" in row ? row.source : ""}
+          data-search={`${row.name} ${"figureName" in row ? row.figureName : ""} ${row.label} ${row.summary} ${row.era} ${row.themes.join(" ")} ${row.occupations.join(" ")} ${row.type} ${row.scope} ${row.layer} ${"thread" in row ? row.thread : ""}`}
           style={`--start: ${positionFor(row.startYear)}; --end: ${positionFor(row.endYear)}; --lane: ${laneFor(row.type)}%;`}
         >
           <button type="button" class="timeline-bar">
@@ -364,6 +400,7 @@ const laneFor = (type: string) =>
   const jumpButtons = document.querySelectorAll<HTMLButtonElement>("[data-jump-year]");
   const themeButtons = document.querySelectorAll<HTMLButtonElement>("[data-theme-query]");
   const zoomButtons = document.querySelectorAll<HTMLButtonElement>("[data-timeline-zoom]");
+  const eraButtons = document.querySelectorAll<HTMLButtonElement>("[data-era-focus]");
 
   const applyFilters = () => {
     const era = eraFilter?.value ?? "";
@@ -415,11 +452,12 @@ const laneFor = (type: string) =>
       : "";
 
     detail.innerHTML = `
-      <span class="beta-label">${row.dataset.layer === "world" ? "World backdrop" : row.dataset.layer === "impact" ? "Impact moment" : row.dataset.type === "story" ? "Historical thread" : "Personal moment"}</span>
+      <span class="beta-label">${row.dataset.type === "story" ? "Historical thread" : row.dataset.layerLabel || "Timeline moment"}</span>
       <h3>${row.dataset.name}</h3>
       <p><strong>${row.dataset.figure}</strong> · ${row.dataset.label}</p>
       <p>${row.dataset.summary || "No note yet."}</p>
       <span class="status-pill">${row.dataset.status}</span>
+      ${row.dataset.thread ? `<p class="muted"><strong>Thread:</strong> ${row.dataset.thread}</p>` : ""}
       <div class="timeline-detail-links">
         <a href="${row.dataset.href}">Open profile</a>
         ${source}
@@ -464,4 +502,27 @@ const laneFor = (type: string) =>
       }
     });
   });
+
+  eraButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (eraFilter) {
+        eraFilter.value = button.dataset.eraFocus ?? "";
+      }
+      applyFilters();
+      const targetYear = Number(button.dataset.eraYear ?? "");
+      const target = [...rows].find((row) => {
+        const visible = !row.classList.contains("hidden");
+        const rowYear = Number(row.dataset.year ?? "");
+        return visible && (!Number.isFinite(targetYear) || rowYear >= targetYear);
+      });
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const thread = params.get("thread");
+  if (thread && timelineSearch) {
+    timelineSearch.value = thread;
+    applyFilters();
+  }
 </script>

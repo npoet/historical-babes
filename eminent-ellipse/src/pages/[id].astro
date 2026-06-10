@@ -8,7 +8,9 @@ import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
 import { siteConfig } from "../site.config";
 import {
+  contextLayerLabels,
   formatYear,
+  getContextLayer,
   getFigureSourceStrength,
   getFigureSourceStrengthLabel,
   getGroupedReferences,
@@ -65,6 +67,20 @@ const sourceStrength = getFigureSourceStrength(figure);
 const sourceStrengthLabel = getFigureSourceStrengthLabel(figure);
 const whatThisMeans =
   "Reviewed items have a source behind them. Approximate items are useful context, not final proof. Needs source and beta review labels mark places where the archive is still checking the trail.";
+const formatDateRange = (item: { year?: number; startYear?: number; endYear?: number }) =>
+  typeof item.year === "number"
+    ? formatYear(item.year)
+    : [item.startYear, item.endYear]
+        .filter((year) => typeof year === "number")
+        .map((year) => formatYear(year))
+        .join("-");
+const contextEventGroups = (["personal", "impact", "world"] as const)
+  .map((layer) => ({
+    layer,
+    label: contextLayerLabels[layer],
+    events: figure.data.contextEvents?.filter((event) => getContextLayer(event) === layer) ?? [],
+  }))
+  .filter((group) => group.events.length > 0);
 const reasonLabels = {
   "shared theme": "Shared theme",
   "similar work": "Similar work",
@@ -219,31 +235,37 @@ const reasonLabels = {
               </>
             )}
 
-            {figure.data.contextEvents?.length > 0 && (
+            {contextEventGroups.map((group) => (
               <>
-                <h4>Events</h4>
+                <h4>{group.label}</h4>
                 <ul>
-                  {figure.data.contextEvents.map((event) => (
+                  {group.events.map((event) => (
                     <li>
                       <strong>{event.label}</strong>
-                      <span>{typeof event.year === "number" ? formatYear(event.year) : [event.startYear, event.endYear].filter((year) => typeof year === "number").map((year) => formatYear(year)).join("-")}</span>
+                      {formatDateRange(event) && <span>{formatDateRange(event)}</span>}
+                      {event.thread && <span>Thread: {event.thread}</span>}
                       <span class="status-pill">{getStatusLabel(event.status)}</span>
-                      {event.source && (
-                        <a href={event.source} target="_blank" rel="noopener noreferrer">Source</a>
-                      )}
+                      <div class="context-links">
+                        <a href={`/timeline?thread=${encodeURIComponent(event.thread ?? event.label)}#${figure.id}`}>Timeline</a>
+                        {event.place && <a href={`/map#${figure.id}`}>Map</a>}
+                        {event.source && (
+                          <a href={event.source} target="_blank" rel="noopener noreferrer">Source</a>
+                        )}
+                      </div>
                       {event.note && <small>{event.note}</small>}
                     </li>
                   ))}
                 </ul>
               </>
-            )}
+            ))}
           </aside>
         )
       }
 
-      {
-        importantWorks?.length > 0 && (
-          <aside class="works">
+      <aside class="profile-rail" aria-label="Profile supporting details">
+        {
+          importantWorks?.length > 0 && (
+          <section class="works">
             <h3>Important Works</h3>
 
             <ul>
@@ -263,24 +285,24 @@ const reasonLabels = {
                 )
               )}
             </ul>
-          </aside>
-        )
-      }
+          </section>
+          )
+        }
 
-      {
-        figure.data.openQuestions?.length > 0 && (
-          <aside class="open-questions">
+        {
+          figure.data.openQuestions?.length > 0 && (
+          <section class="open-questions">
             <h3>Open Questions</h3>
             <ul>
               {figure.data.openQuestions.map((question) => <li>{question}</li>)}
             </ul>
-          </aside>
-        )
-      }
+          </section>
+          )
+        }
 
-      {
-        referenceGroups.length > 0 && (
-          <aside class="references">
+        {
+          referenceGroups.length > 0 && (
+          <section class="references">
             <h3>Sources</h3>
             <p class="reliability-note compact">Compact source cards show what each link helps support. Authority records are identity trails, not stand-alone proof.</p>
 
@@ -332,29 +354,30 @@ const reasonLabels = {
                 </div>
               </div>
             )}
-          </aside>
-        )
-      }
+          </section>
+          )
+        }
 
-      <aside class="creator-cta">
-        <h3>Follow The Archive</h3>
-        <p>More finds and process notes from {siteConfig.creator.name}.</p>
+        <section class="creator-cta">
+          <h3>Follow The Archive</h3>
+          <p>More finds and process notes from {siteConfig.creator.name}.</p>
 
-        <div class="cta-links">
-          <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
-          <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
-          <a href={`mailto:?subject=${encodeURIComponent(`Historical Babes: ${figure.data.name}`)}&body=${encodeURIComponent(`${siteConfig.url}/${figure.id}`)}`}>Share</a>
-        </div>
+          <div class="cta-links">
+            <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
+            <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a href={`mailto:?subject=${encodeURIComponent(`Historical Babes: ${figure.data.name}`)}&body=${encodeURIComponent(`${siteConfig.url}/${figure.id}`)}`}>Share</a>
+          </div>
 
-        {figure.data.originalInstagramUrl && (
-          <a
-            href={figure.data.originalInstagramUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Original Instagram post
-          </a>
-        )}
+          {figure.data.originalInstagramUrl && (
+            <a
+              href={figure.data.originalInstagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Original Instagram post
+            </a>
+          )}
+        </section>
       </aside>
 
       {
@@ -392,10 +415,7 @@ const reasonLabels = {
       "img"
       "content"
       "context"
-      "works"
-      "questions"
-      "references"
-      "creator"
+      "rail"
       "related";
 
     grid-template-columns: 100%;
@@ -407,10 +427,8 @@ const reasonLabels = {
 
       grid-template-areas:
         "img img"
-        "content works"
-        "content questions"
-        "content references"
-        "context creator"
+        "content rail"
+        "context rail"
         "related related";
     }
   }
@@ -423,10 +441,8 @@ const reasonLabels = {
         220px;
 
       grid-template-areas:
-        "img content works"
-        "img content questions"
-        "img content references"
-        "img context creator"
+        "img content rail"
+        "img context rail"
         "img related related";
     }
   }
@@ -437,25 +453,15 @@ const reasonLabels = {
     line-height: 1.6;
   }
 
-  .works {
-    grid-area: works;
-  }
-
-  .references {
-    grid-area: references;
-    margin-top: 2rem;
-  }
-
-  .open-questions {
-    grid-area: questions;
-  }
-
   .context {
     grid-area: context;
   }
 
-  .creator-cta {
-    grid-area: creator;
+  .profile-rail {
+    grid-area: rail;
+    display: grid;
+    gap: 1rem;
+    align-self: start;
   }
 
   .related {
@@ -483,6 +489,18 @@ const reasonLabels = {
     color: var(--color-text-alt);
     font-size: 0.85rem;
     line-height: 1.4;
+  }
+
+  .context-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.4rem 0;
+  }
+
+  .context-links a {
+    font-size: 0.82rem;
+    font-weight: 800;
   }
 
   .trust-strip {

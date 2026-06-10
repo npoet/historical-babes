@@ -5,6 +5,8 @@ import { glob } from "astro/loaders";
 
 const factStatusSchema = z.enum(["reviewed", "approximate", "needs-source"]);
 const sourceStrengthSchema = z.enum(["strong", "partial", "needs-review"]);
+const contextLayerSchema = z.enum(["personal", "impact", "world"]);
+const contextImportanceSchema = z.enum(["major", "supporting"]);
 const sourceTypeSchema = z.enum([
   "primary",
   "archive",
@@ -48,6 +50,9 @@ const placeSchema = z.object({
 
 const contextEventSchema = z.object({
   label: z.string(),
+  layer: contextLayerSchema.optional(),
+  thread: z.string().optional(),
+  importance: contextImportanceSchema.optional(),
   year: z.number().int().optional(),
   startYear: z.number().int().optional(),
   endYear: z.number().int().optional(),

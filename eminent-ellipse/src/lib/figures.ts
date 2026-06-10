@@ -11,6 +11,7 @@ export type SourceType =
   | "reference"
   | "authority";
 export type SourceStrength = "strong" | "partial" | "needs-review";
+export type ContextLayer = "personal" | "impact" | "world";
 export type ConnectionReason =
   | "shared theme"
   | "similar work"
@@ -23,6 +24,30 @@ export type RelatedFigure = {
   figure: FigureEntry;
   reasons: ConnectionReason[];
   note?: string;
+};
+
+export const contextLayerLabels: Record<ContextLayer, string> = {
+  personal: "Life + places",
+  impact: "Impact moments",
+  world: "World backdrop",
+};
+
+export const contextLayerShortLabels: Record<ContextLayer, string> = {
+  personal: "Life",
+  impact: "Impact",
+  world: "World",
+};
+
+export const getContextLayer = (
+  event?: { label?: string; layer?: ContextLayer },
+): ContextLayer => {
+  if (event?.layer) return event.layer;
+
+  return /\b(boycott|falls|ratifies|siege|war|movement|revolution|period|amendment)\b/i.test(
+    event?.label ?? "",
+  )
+    ? "world"
+    : "impact";
 };
 
 export const reliabilityCopy =
@@ -154,6 +179,9 @@ export const getSearchText = (figure: FigureEntry) =>
     ...(
       figure.data.contextEvents?.flatMap((event) => [
         event.label,
+        event.layer,
+        event.thread,
+        event.importance,
         event.place,
         event.note,
       ]) ?? []
@@ -226,6 +254,9 @@ export const getSearchBuckets = (figure: FigureEntry) => {
       values:
         figure.data.contextEvents?.flatMap((event) => [
           event.label,
+          event.layer,
+          event.thread,
+          event.importance,
           event.place,
           event.note,
         ]) ?? [],
