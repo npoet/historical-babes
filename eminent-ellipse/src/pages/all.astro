@@ -162,6 +162,7 @@ const missingCoordinateItems = [
       note: `${event.label} has a place note but no reviewed coordinates yet.`,
     })),
 ];
+
 ---
 
 <BaseLayout
@@ -173,7 +174,6 @@ const missingCoordinateItems = [
   <section class="archive-hero">
     <div>
       <span class="beta-label">Archive beta</span>
-      <h2>Archive</h2>
       <p>
         Search names, places, eras, occupations, themes, and notes across the growing Historical Babes collection.
       </p>
@@ -182,13 +182,26 @@ const missingCoordinateItems = [
   </section>
 
   <section class="search-section">
-      <input
-        id="figure-search"
-        type="search"
-        placeholder="Search names, places, occupations, themes, context..."
-        class="search-input"
-        aria-label="Search historical figures"
-      />
+      <div class="search-row">
+          <input
+            id="figure-search"
+            type="search"
+            placeholder="Search names, places, occupations, themes, context..."
+            class="search-input"
+            aria-label="Search historical figures"
+          />
+
+          <button
+            type="button"
+            id="filters-toggle"
+            class="filters-toggle"
+            aria-expanded="false"
+          >
+            Show Filters
+          </button>
+        </div>
+
+        <div id="filters-panel" class="filters-panel hidden">
       <p class="search-scope-note">
         Deep search includes figure summaries, places, source-linked context events, and research notes.
       </p>
@@ -220,7 +233,8 @@ const missingCoordinateItems = [
         ))}
       </div>
 
-      <div class="filter-grid" aria-label="Archive filters">
+
+  <div class="filter-grid" aria-label="Archive filters">
         <label>
           Era
           <select id="era-filter">
@@ -254,7 +268,8 @@ const missingCoordinateItems = [
             ))}
           </select>
         </label>
-      </div>
+        </div>
+</div>
   </section>
   <section id="figure-grid" class="figure-grid">
     {figures.map((figure) => (
@@ -451,4 +466,25 @@ const missingCoordinateItems = [
     const chosen = pool[Math.floor(Math.random() * pool.length)];
     chosen?.click();
   });
+
+    const filtersToggle =
+      document.getElementById("filters-toggle");
+
+    const filtersPanel =
+      document.getElementById("filters-panel");
+
+  filtersToggle?.addEventListener("click", () => {
+      const isOpen =
+        !filtersPanel?.classList.contains("hidden");
+
+      filtersPanel?.classList.toggle("hidden");
+
+      filtersToggle.textContent =
+        isOpen ? "Show Filters" : "Hide Filters";
+
+      filtersToggle.setAttribute(
+        "aria-expanded",
+        String(!isOpen)
+      );
+    });
 </script>

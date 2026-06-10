@@ -1538,3 +1538,48 @@ p + h3 {
 .hidden {
   display: none;
 }
+
+.search-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+
+  margin-bottom: 1rem;
+}
+
+.filters-toggle {
+  flex-shrink: 0;
+
+  padding: 0.9rem 1rem;
+
+  border: 1px solid var(--border-color);
+
+  border-radius: 999px;
+
+  color: var(--color-text);
+
+  background: var(--color-bg);
+
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.filters-toggle:hover {
+  border-color: var(--color-pink);
+}
+
+.filters-panel {
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters-toggle {
+    width: 100%;
+  }
+}
