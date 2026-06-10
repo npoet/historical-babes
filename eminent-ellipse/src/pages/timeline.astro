@@ -1,0 +1,527 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import { siteConfig } from "../site.config";
+import {
+  contextLayerLabels,
+  formatYear,
+  getContextLayer,
+  getOccupations,
+  getStartYear,
+  getStatusLabel,
+  reliabilityCopy,
+} from "../lib/figures";
+
+const figures = await getCollection("figures");
+const workTitle = (work: string | { title: string }) =>
+  typeof work === "string" ? work : work.title;
+const workYear = (work: string | { year?: number; startYear?: number }) =>
+  typeof work === "string" ? undefined : work.year ?? work.startYear;
+const workEndYear = (work: string | { year?: number; startYear?: number; endYear?: number }) =>
+  typeof work === "string" ? undefined : work.endYear ?? work.year ?? work.startYear;
+const workNote = (work: string | { note?: string }) =>
+  typeof work === "string" ? "" : work.note ?? "";
+const workStatus = (work: string | { status?: "reviewed" | "approximate" | "needs-source" }) =>
+  typeof work === "string" ? undefined : work.status;
+const seedYear = (seed: { year?: number; startYear?: number }) => seed.year ?? seed.startYear;
+const seedEndYear = (seed: { year?: number; startYear?: number; endYear?: number }) =>
+  seed.endYear ?? seed.year ?? seed.startYear;
+const figureRows = figures.map((figure) => {
+  const startYear = getStartYear(figure);
+  const endYear = typeof figure.data.deathYear === "number" ? figure.data.deathYear : startYear;
+
+  return {
+    id: figure.id,
+    name: figure.data.name,
+    startYear,
+    endYear,
+    label: figure.data.lifespan ?? formatYear(startYear),
+    era: figure.data.era ?? "Unknown era",
+    themes: figure.data.themes ?? [],
+    occupations: getOccupations(figure),
+    status: getStatusLabel(figure.data.dateStatus),
+    summary: figure.data.summary ?? "",
+    type: "life",
+    href: `/${figure.id}`,
+    scope: "person",
+    layer: "personal",
+  };
+});
+const workRows = figures.flatMap((figure) =>
+  figure.data.importantWorks
+    ?.filter((work) => typeof workYear(work) === "number")
+    .map((work) => ({
+      id: `${figure.id}-${workTitle(work)}`,
+      figureId: figure.id,
+      name: workTitle(work),
+      figureName: figure.data.name,
+      startYear: workYear(work),
+      endYear: workEndYear(work),
+      label: [workYear(work), workEndYear(work)]
+        .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
+        .map((year) => formatYear(year))
+        .join("-") || "Unknown date",
+      era: figure.data.era ?? "Unknown era",
+      themes: figure.data.themes ?? [],
+      occupations: getOccupations(figure),
+      status: getStatusLabel(workStatus(work) ?? figure.data.sourceCoverageStatus),
+      summary: workNote(work),
+      type: "work",
+      href: `/${figure.id}`,
+      scope: "person",
+      layer: "impact",
+    })) ?? []
+);
+const placeRows = figures.flatMap((figure) =>
+  figure.data.places
+    ?.filter((place) => typeof place.startYear === "number" || typeof place.endYear === "number")
+    .map((place) => ({
+      id: `${figure.id}-${place.name}-${place.startYear ?? place.endYear}`,
+      figureId: figure.id,
+      name: place.name,
+      figureName: figure.data.name,
+      startYear: place.startYear ?? place.endYear,
+      endYear: place.endYear ?? place.startYear,
+      label: [place.startYear, place.endYear]
+        .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
+        .map((year) => formatYear(year))
+        .join("-") || "Unknown date",
+      era: figure.data.era ?? "Unknown era",
+      themes: figure.data.themes ?? [],
+      occupations: getOccupations(figure),
+      status: getStatusLabel(place.status),
+      summary: place.note ?? "",
+      type: "place",
+      href: `/${figure.id}`,
+      scope: "person",
+      layer: "personal",
+    })) ?? []
+);
+const eventRows = figures.flatMap((figure) =>
+  figure.data.contextEvents?.map((event) => {
+    const layer = getContextLayer(event);
+
+    return {
+      id: `${figure.id}-${event.label}`,
+      figureId: figure.id,
+      name: event.label,
+      figureName: figure.data.name,
+      startYear: event.year ?? event.startYear,
+      endYear: event.endYear ?? event.year ?? event.startYear,
+      label: [event.year ?? event.startYear, event.endYear].filter((year) => typeof year === "number").map((year) => formatYear(year)).join("-") || "Unknown date",
+      era: figure.data.era ?? "Unknown era",
+      themes: figure.data.themes ?? [],
+      occupations: getOccupations(figure),
+      status: getStatusLabel(event.status),
+      summary: event.note ?? "",
+      type: "event",
+      href: `/${figure.id}`,
+      source: event.source ?? "",
+      thread: event.thread ?? "",
+      importance: event.importance ?? "supporting",
+      scope: "context",
+      layer,
+      layerLabel: contextLayerLabels[layer],
+    };
+  }) ?? []
+);
+const seedRows = figures.flatMap((figure) =>
+  figure.data.storySeeds
+    ?.filter((seed) => typeof seedYear(seed) === "number")
+    .map((seed) => ({
+      id: `${figure.id}-story-${seed.title}`,
+      figureId: figure.id,
+      name: seed.title,
+      figureName: figure.data.name,
+      startYear: seedYear(seed),
+      endYear: seedEndYear(seed),
+      label: [seedYear(seed), seedEndYear(seed)]
+        .filter((year, index, years) => typeof year === "number" && years.indexOf(year) === index)
+        .map((year) => formatYear(year))
+        .join("-") || "Unknown date",
+      era: figure.data.era ?? "Unknown era",
+      themes: figure.data.themes ?? [],
+      occupations: getOccupations(figure),
+      status: getStatusLabel(seed.status),
+      summary: seed.prompt,
+      note: seed.note ?? "",
+      type: "story",
+      href: `/${figure.id}`,
+      source: seed.source,
+      thread: seed.title,
+      importance: "major",
+      scope: "person",
+      layer: "impact",
+      layerLabel: contextLayerLabels.impact,
+    })) ?? []
+);
+const rows = [...figureRows, ...workRows, ...placeRows, ...eventRows, ...seedRows].sort((a, b) => {
+  const aYear = typeof a.startYear === "number" ? a.startYear : Number.POSITIVE_INFINITY;
+  const bYear = typeof b.startYear === "number" ? b.startYear : Number.POSITIVE_INFINITY;
+  return aYear - bYear;
+});
+const datedRows = rows.filter((row) => typeof row.startYear === "number");
+const minYear = Math.min(...datedRows.map((row) => row.startYear ?? 0));
+const maxYear = Math.max(new Date().getFullYear(), ...datedRows.map((row) => row.endYear ?? row.startYear ?? 0));
+const range = Math.max(1, maxYear - minYear);
+const eras = [...new Set(figureRows.map((row) => row.era))].sort();
+const themes = [...new Set(figureRows.flatMap((row) => row.themes))].sort();
+const eraRanges = eras
+  .map((era) => {
+    const eraRows = datedRows.filter((row) => row.era === era);
+    return {
+      era,
+      startYear: Math.min(...eraRows.map((row) => row.startYear ?? 0)),
+      endYear: Math.max(...eraRows.map((row) => row.endYear ?? row.startYear ?? 0)),
+      count: eraRows.length,
+    };
+  })
+  .filter((era) => Number.isFinite(era.startYear) && Number.isFinite(era.endYear))
+  .sort((a, b) => a.startYear - b.startYear);
+const yearBuckets = new Map<number, number>();
+for (const row of datedRows) {
+  const bucket = Math.floor((row.startYear ?? 0) / 50) * 50;
+  yearBuckets.set(bucket, (yearBuckets.get(bucket) ?? 0) + 1);
+}
+const denseYear = [...yearBuckets.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? minYear;
+const importantYear = datedRows.find((row) => row.type === "event")?.startYear ?? denseYear;
+const positionFor = (year?: number) =>
+  typeof year === "number" ? `${(((year - minYear) / range) * 100).toFixed(2)}%` : "0%";
+const timelineMidpoint = Math.round((minYear + maxYear) / 2);
+const laneFor = (type: string) =>
+  ({
+    life: 18,
+    work: 38,
+    place: 56,
+    event: 72,
+    story: 86,
+  })[type] ?? 50;
+---
+
+<BaseLayout title="Archive Timeline" description={`Explore the ${siteConfig.title} by year.`} canonicalPath="/timeline">
+  <SiteHeader />
+
+  <section class="archive-hero">
+    <div>
+      <span class="beta-label">Timeline beta</span>
+      <p>Lifespans, works, moves, and context events arranged across the archive.</p>
+      <p class="reliability-note">{reliabilityCopy}</p>
+    </div>
+  </section>
+
+  <section class="search-section timeline-controls">
+    <div class="filter-grid" aria-label="Timeline filters">
+      <label>
+        Era
+        <select id="timeline-era">
+          <option value="">Any era</option>
+          {eras.map((era) => <option value={era}>{era}</option>)}
+        </select>
+      </label>
+
+      <label>
+        Theme
+        <select id="timeline-theme">
+          <option value="">Any theme</option>
+          {themes.map((theme) => <option value={theme}>{theme}</option>)}
+        </select>
+      </label>
+
+      <label>
+        Search
+        <input id="timeline-search" type="search" placeholder="Try science, London, resistance..." autocomplete="off" />
+      </label>
+
+      <label>
+        Type
+        <select id="timeline-type">
+          <option value="">All timeline notes</option>
+          <option value="life">Lifespans</option>
+          <option value="work">Important works</option>
+          <option value="place">Place moves</option>
+          <option value="event">Impact + world events</option>
+          <option value="story">Historical threads</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="collection-chips timeline-layer-controls" aria-label="Timeline layers">
+      <span>Layers</span>
+      <label class="context-toggle">
+        <input type="checkbox" data-timeline-layer="personal" checked />
+        {contextLayerLabels.personal}
+      </label>
+      <label class="context-toggle">
+        <input type="checkbox" data-timeline-layer="impact" checked />
+        {contextLayerLabels.impact}
+      </label>
+      <label class="context-toggle">
+        <input type="checkbox" data-timeline-layer="world" checked />
+        {contextLayerLabels.world}
+      </label>
+    </div>
+
+    <div class="collection-chips" aria-label="Start somewhere">
+      <span>Start somewhere</span>
+      <button type="button" data-jump-year={denseYear}>Dense years</button>
+      <button type="button" data-jump-year={importantYear}>Important years</button>
+      <button type="button" data-theme-query="Science and Innovation">Scientists</button>
+      <button type="button" data-theme-query="Power and Resistance">Resistance</button>
+    </div>
+  </section>
+
+  <section class="timeline-board">
+    <aside class="timeline-detail" id="timeline-detail" aria-live="polite" tabindex="-1">
+      <span class="beta-label">Timeline focus</span>
+      <h3>Select a life, work, place, event, or thread</h3>
+      <p class="muted">Use search, filters, or the quick chips to narrow the timeline, then select a marker to see sources and who was alive nearby.</p>
+    </aside>
+
+  <section class="timeline-scale" style={`--min-year: ${minYear}; --max-year: ${maxYear};`}>
+    <div class="timeline-axis">
+      <span>{formatYear(minYear)}</span>
+      <span>{formatYear(timelineMidpoint)}</span>
+      <span>{formatYear(maxYear)}</span>
+    </div>
+
+    <div class="timeline-type-key" aria-label="Timeline marker key">
+      <span class="life">Lives</span>
+      <span class="work">Works</span>
+      <span class="place">Places</span>
+      <span class="event impact">Impact</span>
+      <span class="event world">World</span>
+      <span class="story">Threads</span>
+    </div>
+
+    <div class="timeline-era-band" aria-label="Timeline era focus">
+      <button type="button" data-era-focus="">All eras</button>
+      {eraRanges.map((era) => (
+        <button
+          type="button"
+          data-era-focus={era.era}
+          data-era-year={era.startYear}
+        >
+          <strong>{era.era}</strong>
+          <span>{formatYear(era.startYear)}-{formatYear(era.endYear)} · {era.count}</span>
+        </button>
+      ))}
+    </div>
+
+    <div class="timeline-zoom-controls" aria-label="Timeline zoom controls">
+      <button type="button" data-timeline-zoom="out">Full range</button>
+      <button type="button" data-timeline-zoom="life">Lives</button>
+      <button type="button" data-timeline-zoom="dense">Dense years</button>
+    </div>
+
+    <ol class="timeline-rows single-line-timeline" data-zoom="out" data-dense-year={denseYear}>
+      {rows.map((row) => (
+        <li
+          id={row.type === "life" ? row.id : undefined}
+          class={`timeline-row ${row.type}`}
+          data-era={row.era}
+          data-themes={row.themes.join("|")}
+          data-type={row.type}
+          data-scope={row.scope}
+          data-layer={row.layer}
+          data-layer-label={"layerLabel" in row ? row.layerLabel : contextLayerLabels[row.layer]}
+          data-thread={"thread" in row ? row.thread : ""}
+          data-importance={"importance" in row ? row.importance : ""}
+          data-year={row.startYear ?? ""}
+          data-end-year={row.endYear ?? row.startYear ?? ""}
+          data-name={row.name}
+          data-figure={"figureName" in row ? row.figureName : row.name}
+          data-label={row.label}
+          data-status={row.status}
+          data-summary={row.summary}
+          data-href={row.href}
+          data-source={"source" in row ? row.source : ""}
+          data-search={`${row.name} ${"figureName" in row ? row.figureName : ""} ${row.label} ${row.summary} ${row.era} ${row.themes.join(" ")} ${row.occupations.join(" ")} ${row.type} ${row.scope} ${row.layer} ${"thread" in row ? row.thread : ""}`}
+          style={`--start: ${positionFor(row.startYear)}; --end: ${positionFor(row.endYear)}; --lane: ${laneFor(row.type)}%;`}
+        >
+          <button type="button" class="timeline-bar">
+            <strong>{row.name}</strong>
+            {"figureName" in row && <span>{row.figureName}</span>}
+          </button>
+          <div class="timeline-meta">
+            <span>{row.label}</span>
+            <span class="status-pill">{row.status}</span>
+          </div>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  {seedRows.length > 0 && (
+    <section class="story-seeds" aria-labelledby="story-seeds-heading">
+      <div class="section-heading">
+        <div>
+          <span class="beta-label">Curated threads</span>
+          <h3 id="story-seeds-heading">Historical threads ready for timeline browsing</h3>
+        </div>
+        <span>{seedRows.length} sourced prompts</span>
+      </div>
+
+      <ol class="story-seed-list">
+        {seedRows.map((seed) => (
+          <li>
+            <a href={seed.href}>
+              <strong>{seed.name}</strong>
+              <span>{seed.figureName} · {seed.label}</span>
+            </a>
+            <p>{seed.summary}</p>
+            {seed.note && <small>{seed.note}</small>}
+            <div class="story-seed-meta">
+              <span class="status-pill">{seed.status}</span>
+              <a href={`/timeline?thread=${encodeURIComponent(seed.thread)}#${seed.id}`}>Open thread</a>
+              <a href={seed.source}>Source</a>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )}
+  </section>
+
+  <SiteFooter />
+</BaseLayout>
+
+<script>
+  const eraFilter = document.getElementById("timeline-era") as HTMLSelectElement | null;
+  const themeFilter = document.getElementById("timeline-theme") as HTMLSelectElement | null;
+  const typeFilter = document.getElementById("timeline-type") as HTMLSelectElement | null;
+  const timelineSearch = document.getElementById("timeline-search") as HTMLInputElement | null;
+  const layerToggles = document.querySelectorAll<HTMLInputElement>("[data-timeline-layer]");
+  const detail = document.getElementById("timeline-detail");
+  const rows = document.querySelectorAll<HTMLElement>(".timeline-row");
+  const timeline = document.querySelector<HTMLElement>(".single-line-timeline");
+  const jumpButtons = document.querySelectorAll<HTMLButtonElement>("[data-jump-year]");
+  const themeButtons = document.querySelectorAll<HTMLButtonElement>("[data-theme-query]");
+  const zoomButtons = document.querySelectorAll<HTMLButtonElement>("[data-timeline-zoom]");
+  const eraButtons = document.querySelectorAll<HTMLButtonElement>("[data-era-focus]");
+
+  const applyFilters = () => {
+    const era = eraFilter?.value ?? "";
+    const theme = themeFilter?.value ?? "";
+    const type = typeFilter?.value ?? "";
+    const query = timelineSearch?.value.toLowerCase().trim() ?? "";
+    const activeLayers = new Set(
+      [...layerToggles]
+        .filter((toggle) => toggle.checked)
+        .map((toggle) => toggle.dataset.timelineLayer ?? "")
+    );
+
+    rows.forEach((row) => {
+      const themes = row.dataset.themes?.split("|") ?? [];
+      const searchText = row.dataset.search?.toLowerCase() ?? "";
+      const matches =
+        (!era || row.dataset.era === era) &&
+        (!theme || themes.includes(theme)) &&
+        (!type || row.dataset.type === type) &&
+        activeLayers.has(row.dataset.layer ?? "") &&
+        (!query || searchText.includes(query));
+
+      row.classList.toggle("hidden", !matches);
+    });
+  };
+
+  [eraFilter, themeFilter, typeFilter].forEach((control) => {
+    control?.addEventListener("change", applyFilters);
+  });
+  timelineSearch?.addEventListener("input", applyFilters);
+  layerToggles.forEach((toggle) => toggle.addEventListener("change", applyFilters));
+
+  const renderDetail = (row: HTMLElement) => {
+    if (!detail) return;
+    const year = Number(row.dataset.year ?? "");
+    const alive = [...rows]
+      .filter((candidate) => candidate.dataset.type === "life")
+      .filter((candidate) => {
+        const start = Number(candidate.dataset.year ?? "");
+        const end = Number(candidate.dataset.endYear ?? candidate.dataset.year ?? "");
+        return Number.isFinite(year) && Number.isFinite(start) && Number.isFinite(end) && start <= year && end >= year;
+      })
+      .map((candidate) => candidate.dataset.name)
+      .filter(Boolean)
+      .slice(0, 8);
+
+    const source = row.dataset.source
+      ? `<a href="${row.dataset.source}">Open source</a>`
+      : "";
+
+    detail.innerHTML = `
+      <span class="beta-label">${row.dataset.type === "story" ? "Historical thread" : row.dataset.layerLabel || "Timeline moment"}</span>
+      <h3>${row.dataset.name}</h3>
+      <p><strong>${row.dataset.figure}</strong> · ${row.dataset.label}</p>
+      <p>${row.dataset.summary || "No note yet."}</p>
+      <span class="status-pill">${row.dataset.status}</span>
+      ${row.dataset.thread ? `<p class="muted"><strong>Thread:</strong> ${row.dataset.thread}</p>` : ""}
+      <div class="timeline-detail-links">
+        <a href="${row.dataset.href}">Open profile</a>
+        ${source}
+      </div>
+      ${
+        alive.length
+          ? `<div class="timeline-alive"><strong>Alive around ${row.dataset.label}</strong><span>${alive.join(", ")}</span></div>`
+          : ""
+      }
+    `;
+    rows.forEach((candidate) => candidate.classList.toggle("selected", candidate === row));
+    detail.focus();
+  };
+
+  rows.forEach((row) => {
+    row.querySelector(".timeline-bar")?.addEventListener("click", () => renderDetail(row));
+  });
+
+  jumpButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const targetYear = Number(button.dataset.jumpYear ?? "");
+      const target = [...rows].find((row) => Number(row.dataset.year) >= targetYear);
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+  });
+
+  themeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!themeFilter) return;
+      themeFilter.value = button.dataset.themeQuery ?? "";
+      applyFilters();
+    });
+  });
+
+  zoomButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!timeline) return;
+      timeline.dataset.zoom = button.dataset.timelineZoom ?? "out";
+      if (button.dataset.timelineZoom === "dense") {
+        const target = [...rows].find((row) => Number(row.dataset.year) >= Number(timeline.dataset.denseYear ?? ""));
+        target?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    });
+  });
+
+  eraButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (eraFilter) {
+        eraFilter.value = button.dataset.eraFocus ?? "";
+      }
+      applyFilters();
+      const targetYear = Number(button.dataset.eraYear ?? "");
+      const target = [...rows].find((row) => {
+        const visible = !row.classList.contains("hidden");
+        const rowYear = Number(row.dataset.year ?? "");
+        return visible && (!Number.isFinite(targetYear) || rowYear >= targetYear);
+      });
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const thread = params.get("thread");
+  if (thread && timelineSearch) {
+    timelineSearch.value = thread;
+    applyFilters();
+  }
+</script>

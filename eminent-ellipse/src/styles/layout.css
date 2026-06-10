@@ -7,23 +7,13 @@
 .title-header {
   position: relative;
 
-  display: grid;
-  grid-template-columns: 100%;
-
-  gap: 1rem;
-  align-items: end;
+  display: block;
 
   width: 100%;
 
   padding: 2rem 0 1.5rem;
 
   font-weight: 700;
-}
-
-@media screen and (min-width: 50em) {
-  .title-header {
-    grid-template-columns: 200px 1fr auto;
-  }
 }
 
 .logo-slot {

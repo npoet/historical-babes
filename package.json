@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "build": "npm --prefix eminent-ellipse run build",
+    "qa:content": "npm --prefix eminent-ellipse run qa:content"
+  },
   "dependencies": {
     "@astrojs/mdx": "^6.0.2"
   }
