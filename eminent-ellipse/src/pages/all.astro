@@ -179,14 +179,6 @@ const missingCoordinateItems = [
       </p>
       <p class="reliability-note">{reliabilityCopy}</p>
     </div>
-
-    <div class="creator-cta compact">
-      <span>More research and process notes from {siteConfig.creator.name}</span>
-      <div class="cta-links">
-        <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
-        <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
-      </div>
-    </div>
   </section>
 
   <section class="search-section">
@@ -207,8 +199,8 @@ const missingCoordinateItems = [
         <button type="button" data-chip-query="artist writer art">Artists</button>
         <button type="button" data-chip-query="resistance civil rights activist">Resistance</button>
         <button type="button" data-chip-query="first pioneer">Firsts</button>
-        <button type="button" data-chip-query="war conflict resistance">War + Conflict</button>
-        <button type="button" data-random-figure>Show me someone</button>
+        <button type="button" data-chip-query="war conflict">War + Conflict</button>
+        <button type="button" data-random-figure>Random Babe</button>
         <button type="button" data-random-chip>Random trail</button>
       </div>
 
@@ -294,12 +286,6 @@ const missingCoordinateItems = [
           }
 
           {
-            figure.data.summary && (
-              <p>{figure.data.summary}</p>
-            )
-          }
-
-          {
             contextLayersByFigure.get(figure.id)?.length > 0 && (
               <div class="figure-badges" aria-label="Context layers">
                 {(contextLayersByFigure.get(figure.id) ?? []).slice(0, 3).map((layer) => (
@@ -308,13 +294,7 @@ const missingCoordinateItems = [
               </div>
             )
           }
-
           <small class="match-hint" aria-live="polite"></small>
-
-          <span class="card-actions">
-            <span>Open profile</span>
-            <span class="share-card" data-share-url={`/${figure.id}`}>Share</span>
-          </span>
         </div>
       </a>
     ))}
@@ -328,88 +308,6 @@ const missingCoordinateItems = [
 
       <p>No babes match your search.</p>
     </div>
-
-  <section class="archive-panel">
-    <div class="section-heading">
-      <h3>Timeline</h3>
-      <span>{timelineFigures.length} dated entries</span>
-    </div>
-
-    <ol class="timeline-list">
-      {timelineFigures.map(({ figure, startYear }) => (
-        <li>
-          <a href={`/${figure.id}`}>{figure.data.name}</a>
-          <span>{figure.data.lifespan ?? startYear}</span>
-        </li>
-      ))}
-    </ol>
-  </section>
-
-  <section class="archive-panel">
-    <div class="section-heading">
-      <h3>Map</h3>
-      <span>{mapMarkers.length} mapped notes, {missingCoordinateItems.length} awaiting coordinates</span>
-    </div>
-
-    {
-      mapMarkers.length > 0 ? (
-        <div class="archive-map" aria-label="Mapped archive places">
-          <div class="archive-map-summary">
-            <div>
-              <span class="beta-label">Map preview</span>
-              <p class="muted">Grouped by person so repeated places and events are easier to scan. Open the full map for pan, zoom, and geographic context.</p>
-            </div>
-            <a href="/map">Open interactive map</a>
-          </div>
-
-          <ol class="map-group-list">
-            {mapGroups.map((group) => (
-              <li>
-                <div class="map-group-heading">
-                  <img src={group.figure.data.image.src} alt="" loading="lazy" />
-                  <div>
-                    <a href={`/${group.figure.id}`}>{group.figure.data.name}</a>
-                    <span>{group.markers.length} mapped note{group.markers.length === 1 ? "" : "s"}</span>
-                  </div>
-                  <a href={`/map#${group.figure.id}`}>Focus</a>
-                </div>
-
-                <ol>
-                  {group.markers.slice(0, 4).map((marker) => (
-                    <li>
-                      <span class={`map-dot ${marker.kind === "event" ? "event" : ""}`} aria-hidden="true"></span>
-                      <span>{marker.eventLabel ?? marker.label}</span>
-                      {marker.eventLabel && <small>{marker.label}</small>}
-                    </li>
-                  ))}
-                </ol>
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : (
-        <p class="muted">Map-ready place notes will appear here as entries gain coordinates.</p>
-      )
-    }
-
-    {
-      missingCoordinateItems.length > 0 && (
-        <details class="missing-map-data">
-          <summary>Entries with place notes awaiting reviewed coordinates</summary>
-
-          <ul class="map-list compact">
-            {missingCoordinateItems.map((item) => (
-              <li>
-                <a href={`/${item.figure.id}`}>{item.figure.data.name}</a>
-                <span>{item.label}</span>
-                <small>{item.note}</small>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )
-    }
-  </section>
 
   <SiteFooter />
 </BaseLayout>

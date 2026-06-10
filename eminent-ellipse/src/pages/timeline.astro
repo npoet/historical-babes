@@ -273,36 +273,6 @@ const laneFor = (type: string) =>
     </div>
   </section>
 
-  {seedRows.length > 0 && (
-    <section class="story-seeds" aria-labelledby="story-seeds-heading">
-      <div class="section-heading">
-        <div>
-          <span class="beta-label">Curated threads</span>
-          <h3 id="story-seeds-heading">Historical threads ready for timeline browsing</h3>
-        </div>
-        <span>{seedRows.length} sourced prompts</span>
-      </div>
-
-      <ol class="story-seed-list">
-        {seedRows.map((seed) => (
-          <li>
-            <a href={seed.href}>
-              <strong>{seed.name}</strong>
-              <span>{seed.figureName} · {seed.label}</span>
-            </a>
-            <p>{seed.summary}</p>
-            {seed.note && <small>{seed.note}</small>}
-            <div class="story-seed-meta">
-              <span class="status-pill">{seed.status}</span>
-              <a href={`/timeline?thread=${encodeURIComponent(seed.thread)}#${seed.id}`}>Open thread</a>
-              <a href={seed.source}>Source</a>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  )}
-
   <section class="timeline-board">
     <aside class="timeline-detail" id="timeline-detail" aria-live="polite" tabindex="-1">
       <span class="beta-label">Timeline focus</span>
@@ -383,6 +353,36 @@ const laneFor = (type: string) =>
       ))}
     </ol>
   </section>
+
+  {seedRows.length > 0 && (
+    <section class="story-seeds" aria-labelledby="story-seeds-heading">
+      <div class="section-heading">
+        <div>
+          <span class="beta-label">Curated threads</span>
+          <h3 id="story-seeds-heading">Historical threads ready for timeline browsing</h3>
+        </div>
+        <span>{seedRows.length} sourced prompts</span>
+      </div>
+
+      <ol class="story-seed-list">
+        {seedRows.map((seed) => (
+          <li>
+            <a href={seed.href}>
+              <strong>{seed.name}</strong>
+              <span>{seed.figureName} · {seed.label}</span>
+            </a>
+            <p>{seed.summary}</p>
+            {seed.note && <small>{seed.note}</small>}
+            <div class="story-seed-meta">
+              <span class="status-pill">{seed.status}</span>
+              <a href={`/timeline?thread=${encodeURIComponent(seed.thread)}#${seed.id}`}>Open thread</a>
+              <a href={seed.source}>Source</a>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )}
   </section>
 
   <SiteFooter />
