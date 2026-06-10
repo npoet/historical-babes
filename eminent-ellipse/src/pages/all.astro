@@ -5,6 +5,8 @@ import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
 import { siteConfig } from "../site.config";
 import {
+  contextLayerShortLabels,
+  getContextLayer,
   getOccupations,
   getReferenceTypeData,
   getSearchBucketData,
@@ -136,6 +138,12 @@ const mapGroups = figures
   }))
   .filter((group) => group.markers.length > 0)
   .sort((a, b) => b.markers.length - a.markers.length || a.figure.data.name.localeCompare(b.figure.data.name));
+const contextLayersByFigure = new Map(
+  figures.map((figure) => [
+    figure.id,
+    [...new Set((figure.data.contextEvents ?? []).map((event) => getContextLayer(event)))],
+  ]),
+);
 const missingCoordinateItems = [
   ...figures.flatMap((figure) =>
     figure.data.places
@@ -288,6 +296,16 @@ const missingCoordinateItems = [
           {
             figure.data.summary && (
               <p>{figure.data.summary}</p>
+            )
+          }
+
+          {
+            contextLayersByFigure.get(figure.id)?.length > 0 && (
+              <div class="figure-badges" aria-label="Context layers">
+                {(contextLayersByFigure.get(figure.id) ?? []).slice(0, 3).map((layer) => (
+                  <span>{contextLayerShortLabels[layer]}</span>
+                ))}
+              </div>
             )
           }
 

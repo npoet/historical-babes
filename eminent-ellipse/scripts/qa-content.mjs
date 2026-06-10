@@ -69,6 +69,28 @@ const countReviewedItemsWithoutSource = (block) => {
   return missing;
 };
 
+const parseListItems = (block) => {
+  const lines = block.split("\n");
+  const items = [];
+  let current = null;
+
+  for (const line of lines) {
+    if (/^\s+-\s+/.test(line)) {
+      if (current) items.push(current);
+      current = {};
+    }
+
+    const match = line.match(/^\s+([a-zA-Z]+):\s*(.*)$/);
+    if (match && current) {
+      current[match[1]] = match[2].replace(/^["']|["']$/g, "");
+    }
+  }
+
+  if (current) items.push(current);
+
+  return items;
+};
+
 const findings = [];
 const warnings = [];
 const publicFiles = await readMdxFiles(figuresDir);
@@ -123,6 +145,11 @@ for (const file of publicFiles) {
   if (contextEventCount > 0) {
     const contextSourceCount = countMatches(contextBlock, /^\s+source:\s*["']?https?:\/\//gm);
     const contextStatusCount = countMatches(contextBlock, /^\s+status:\s*(reviewed|approximate|needs-source)$/gm);
+    const contextItems = parseListItems(contextBlock);
+    const layeredContextItems = contextItems.filter((item) => item.layer);
+    const worldContextItems = contextItems.filter((item) => item.layer === "world");
+    const layeredWithoutStatusOrSource = layeredContextItems.filter((item) => !item.status || !item.source);
+    const worldWithoutThreadOrNote = worldContextItems.filter((item) => !item.thread && !item.note);
 
     if (contextSourceCount < contextEventCount) {
       findings.push(`${label}: context event metadata has no direct source URL`);
@@ -130,6 +157,14 @@ for (const file of publicFiles) {
 
     if (contextStatusCount < contextEventCount) {
       findings.push(`${label}: context timeline metadata has no reliability status`);
+    }
+
+    if (layeredWithoutStatusOrSource.length > 0) {
+      findings.push(`${label}: layered context events need both status and source metadata`);
+    }
+
+    if (worldWithoutThreadOrNote.length > 0) {
+      findings.push(`${label}: world context events need a thread or note`);
     }
   }
 

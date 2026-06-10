@@ -22,11 +22,14 @@
 }
 
 .figure-card {
-  display: block;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
   color: inherit;
 }
 
 .figure-image {
+  flex: 0 0 auto;
   overflow: hidden;
 
   aspect-ratio: 3 / 4;
@@ -51,6 +54,9 @@
 }
 
 .figure-info {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   padding: 0.75rem 0 1.25rem;
 }
 
@@ -78,6 +84,27 @@
   line-height: 1.35;
 }
 
+.figure-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.figure-badges span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-card) 72%, transparent);
+  color: var(--color-text-alt);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .match-hint {
   display: block;
   min-height: 1.2rem;
@@ -90,9 +117,9 @@
 
 .card-actions {
   display: flex;
+  margin-top: auto;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-top: 0.75rem;
 }
 
 .card-actions span {
