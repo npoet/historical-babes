@@ -1534,3 +1534,7 @@ p + h3 {
     flex: 0 0 150px;
   }
 }
+
+.hidden {
+  display: none;
+}
