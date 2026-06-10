@@ -284,16 +284,6 @@ const missingCoordinateItems = [
               <span>{figure.data.lifespan}</span>
             )
           }
-
-          {
-            contextLayersByFigure.get(figure.id)?.length > 0 && (
-              <div class="figure-badges" aria-label="Context layers">
-                {(contextLayersByFigure.get(figure.id) ?? []).slice(0, 3).map((layer) => (
-                  <span>{contextLayerShortLabels[layer]}</span>
-                ))}
-              </div>
-            )
-          }
           <small class="match-hint" aria-live="polite"></small>
         </div>
       </a>
