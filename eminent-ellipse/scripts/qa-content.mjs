@@ -1,5 +1,17 @@
-import { readdir, readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
+import { editorPage, checkEditorPageScript } from "./local-people-editor.mjs";
+import {
+  cleanupDraft,
+  copyProfileToDraft,
+  createDraft,
+  demotePublished,
+  promoteDraft,
+  proposeEnrichment,
+  readProfile,
+} from "./people-content.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 const figuresDir = path.join(root, "src/content/figures");
@@ -95,6 +107,252 @@ const findings = [];
 const warnings = [];
 const publicFiles = await readMdxFiles(figuresDir);
 const draftFiles = await readMdxFiles(draftsDir);
+const runEditorHealthCheck = () => {
+  try {
+    execFileSync(process.execPath, [path.join(root, "scripts/local-people-editor.mjs")], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PEOPLE_EDITOR_HEALTHCHECK: "1",
+        PEOPLE_EDITOR_PORT: "0",
+      },
+      stdio: "pipe",
+    });
+  } catch (error) {
+    const output = [error.stdout, error.stderr, error.message].filter(Boolean).join("\n").trim();
+    findings.push(`people:editor health check failed${output ? `: ${output}` : ""}`);
+  }
+};
+
+const runImportSmokeCheck = async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "historical-babes-import-"));
+  const inputFile = path.join(tempDir, "import-smoke.md");
+  const smokeTitle = `QA Import Smoke Draft ${process.pid}`;
+  const draftFile = path.join(draftsDir, `qa-import-smoke-draft-${process.pid}.mdx`);
+
+  try {
+    await writeFile(
+      inputFile,
+      [`# ${smokeTitle}`, "", "Temporary import validation draft."].join("\n"),
+      "utf8",
+    );
+
+    execFileSync(process.execPath, [path.join(root, "scripts/import-drafts.mjs"), "--input", inputFile], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+  } catch (error) {
+    const output = [error.stdout, error.stderr, error.message].filter(Boolean).join("\n").trim();
+    findings.push(`import:drafts smoke check failed${output ? `: ${output}` : ""}`);
+  } finally {
+    await rm(draftFile, { force: true });
+    await rm(tempDir, { recursive: true, force: true });
+  }
+};
+
+const runStructuredEditorChecks = async () => {
+  try {
+    checkEditorPageScript(editorPage);
+  } catch (error) {
+    findings.push(`people:editor inline script syntax failed: ${error.message}`);
+  }
+
+  const requiredEditorSnippets = [
+    'id="occupations" class="token-list"',
+    'id="themes" class="token-list"',
+    'id="tags" class="token-list"',
+    'id="openQuestions" class="token-list"',
+    "data-token-row-add",
+    'tokenControlHtml("supports"',
+    'tokenControlHtml("reasons"',
+    'id="supportSuggestions"',
+    'id="reasonSuggestions"',
+    'id="cleanupDraft"',
+    '"/api/cleanup-draft"',
+  ];
+
+  requiredEditorSnippets.forEach((snippet) => {
+    if (!editorPage.includes(snippet)) {
+      findings.push(`people:editor missing structured control or enrichment wiring snippet: ${snippet}`);
+    }
+  });
+
+  try {
+    const ada = await readProfile("published", "ada-lovelace");
+    const nestedKeys = [
+      "places",
+      "contextEvents",
+      "references",
+      "relatedConnections",
+      "importantWorks",
+      "storySeeds",
+      "openQuestions",
+    ];
+
+    nestedKeys.forEach((key) => {
+      if (!Array.isArray(ada.data[key]) || ada.data[key].length === 0) {
+        findings.push(`people:editor Ada Lovelace nested field did not parse: ${key}`);
+      }
+    });
+
+    const proposal = proposeEnrichment({
+      id: "ada-lovelace",
+      name: "Ada Lovelace",
+      birthYear: 1815,
+      era: ada.data.era,
+      occupations: ada.data.occupations,
+      tags: ada.data.tags,
+      themes: ada.data.themes,
+      places: ada.data.places,
+      contextEvents: ada.data.contextEvents,
+      profiles: [
+        {
+          id: "ada-lovelace",
+          name: "Ada Lovelace",
+          occupations: ada.data.occupations,
+          tags: ada.data.tags,
+          themes: ada.data.themes,
+          era: ada.data.era,
+          places: ada.data.places.map((place) => place.name),
+          contextThreads: ada.data.contextEvents.map((event) => event.thread).filter(Boolean),
+        },
+        {
+          id: "m-ria-telkes",
+          name: "Maria Telkes",
+          occupations: ["Scientist"],
+          tags: ["Science and Innovation"],
+          themes: ["Science and Innovation"],
+          era: ada.data.era,
+          places: ["London, England"],
+          contextThreads: ada.data.contextEvents.map((event) => event.thread).filter(Boolean),
+        },
+      ],
+    });
+
+    const proposalArrays = [
+      "sourceGaps",
+      "factConfidenceIssues",
+      "likelyRelatedPeople",
+      "relevantWorldEvents",
+      "storyPrompts",
+      "multiPersonPaths",
+      "longPeriodNarrativeThreads",
+    ];
+
+    proposalArrays.forEach((key) => {
+      if (!Array.isArray(proposal[key]) || proposal[key].length === 0) {
+        findings.push(`people:enrichment missing review-first output array: ${key}`);
+      }
+    });
+
+    const unreviewedWorldEvents = proposal.relevantWorldEvents.every((event) => event.status === "needs-source");
+    const unreviewedPaths = proposal.multiPersonPaths.every((item) => item.status === "needs-review");
+    if (!unreviewedWorldEvents || !unreviewedPaths || proposal.reviewStatus !== "needs-review") {
+      findings.push("people:enrichment proposed facts must remain needs-source or needs-review");
+    }
+  } catch (error) {
+    findings.push(`people:structured editor regression check failed: ${error.message}`);
+  }
+};
+
+const runLifecycleSmokeCheck = async () => {
+  const slug = `qa-lifecycle-${process.pid}`;
+  const copiedSlug = `${slug}-copy`;
+  const demotedSlug = `${slug}-demoted`;
+  let promoted = false;
+
+  try {
+    await copyProfileToDraft("ada-lovelace", { slug: copiedSlug, overwrite: true });
+
+    await createDraft({
+      slug,
+      name: "QA Lifecycle Draft",
+      summary: "Temporary lifecycle validation draft.",
+      references: [
+        {
+          title: "QA Reference",
+          url: "https://example.com/qa-reference",
+          type: "reference",
+          supports: ["dates", "custom archival clue"],
+          status: "needs-source",
+        },
+      ],
+      relatedConnections: [
+        {
+          id: "ada-lovelace",
+          reasons: ["shared theme", "custom editorial pairing"],
+          note: "Temporary QA relationship.",
+        },
+      ],
+      storySeeds: [
+        {
+          title: "Needs-source prompt with no URL",
+          year: 1843,
+          prompt: "Trace a representative draft story prompt that still needs a source URL.",
+          status: "needs-source",
+          source: "",
+        },
+      ],
+      overwrite: true,
+    });
+
+    const draft = await readProfile("draft", slug);
+    const supports = draft.data.references?.[0]?.supports ?? [];
+    const reasons = draft.data.relatedConnections?.[0]?.reasons ?? [];
+    const storySeed = draft.data.storySeeds?.find((seed) => seed.title === "Needs-source prompt with no URL");
+
+    if (!supports.includes("custom archival clue")) {
+      findings.push("people:content custom reference supports were not preserved in draft generation");
+    }
+
+    if (!reasons.includes("custom editorial pairing")) {
+      findings.push("people:content custom related-connection reasons were not preserved in draft generation");
+    }
+
+    if (!storySeed || storySeed.status !== "needs-source" || storySeed.source) {
+      findings.push("people:content blank-source needs-source story prompt was not preserved as schema-compatible draft data");
+    }
+
+    try {
+      execFileSync("npm", ["run", "build"], {
+        cwd: root,
+        encoding: "utf8",
+        stdio: "pipe",
+      });
+    } catch (error) {
+      const output = [error.stdout, error.stderr, error.message].filter(Boolean).join("\n").trim();
+      findings.push(`people:content schema build failed with custom editor draft${output ? `: ${output}` : ""}`);
+    }
+
+    let blockedPromotion = false;
+    try {
+      await promoteDraft(slug, { slug, overwrite: true });
+    } catch (error) {
+      blockedPromotion = /needs-source|needs-review|reviewed: false/.test(error.message);
+    }
+
+    if (!blockedPromotion) {
+      findings.push("people:lifecycle unreviewed draft promotion was not blocked");
+    }
+
+    await promoteDraft(slug, { slug, overwrite: true, force: true });
+    promoted = true;
+    await demotePublished(slug, { slug: demotedSlug, overwrite: true });
+    promoted = false;
+  } catch (error) {
+    findings.push(`people:lifecycle smoke check failed: ${error.message}`);
+  } finally {
+    await cleanupDraft(slug).catch(() => {});
+    await cleanupDraft(copiedSlug).catch(() => {});
+    await cleanupDraft(demotedSlug).catch(() => {});
+    if (promoted) {
+      await demotePublished(slug, { slug: demotedSlug, overwrite: true }).catch(() => {});
+      await cleanupDraft(demotedSlug).catch(() => {});
+    }
+  }
+};
 
 for (const file of publicFiles) {
   const source = await readFile(file, "utf8");
@@ -230,6 +488,11 @@ for (const file of draftFiles) {
 
   findings.push(`${label}: unreviewed imported draft`);
 }
+
+runEditorHealthCheck();
+await runStructuredEditorChecks();
+await runLifecycleSmokeCheck();
+await runImportSmokeCheck();
 
 if (findings.length > 0) {
   console.log("Content QA findings:");

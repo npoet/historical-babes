@@ -89,6 +89,8 @@ const reasonLabels = {
   "shared context event": "Shared event",
   "historical thread": "Historical thread",
 };
+const reasonLabel = (reason: string) =>
+  reasonLabels[reason as keyof typeof reasonLabels] ?? reason;
 ---
 
 <BaseLayout
@@ -390,9 +392,9 @@ const reasonLabels = {
                   <a href={`/${related.figure.id}`}>{related.figure.data.name}</a>
                   {related.figure.data.lifespan && <span>{related.figure.data.lifespan}</span>}
                   <div class="reason-list">
-                    {related.reasons.map((reason) => <span class="reason-badge">{reasonLabels[reason]}</span>)}
+                    {related.reasons.map((reason) => <span class="reason-badge">{reasonLabel(reason)}</span>)}
                   </div>
-                  <p>{related.note ?? `${related.figure.data.name} has a ${related.reasons[0] ? reasonLabels[related.reasons[0]].toLowerCase() : "related archive"} connection with ${figure.data.name}.`}</p>
+                  <p>{related.note ?? `${related.figure.data.name} has a ${related.reasons[0] ? reasonLabel(related.reasons[0]).toLowerCase() : "related archive"} connection with ${figure.data.name}.`}</p>
                   <div class="connection-links">
                     <a href={`/${related.figure.id}`}>Profile</a>
                     <a href={`/map#${related.figure.id}`}>Map focus</a>

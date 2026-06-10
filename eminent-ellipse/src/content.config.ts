@@ -16,23 +16,8 @@ const sourceTypeSchema = z.enum([
   "reference",
   "authority",
 ]);
-const sourceSupportSchema = z.enum([
-  "dates",
-  "place",
-  "work",
-  "context event",
-  "image",
-  "quote",
-  "background",
-]);
-const connectionReasonSchema = z.enum([
-  "shared theme",
-  "similar work",
-  "same era",
-  "connected place",
-  "shared context event",
-  "historical thread",
-]);
+const sourceSupportSchema = z.string().trim().min(1);
+const connectionReasonSchema = z.string().trim().min(1);
 
 const placeSchema = z.object({
   name: z.string(),
@@ -84,7 +69,7 @@ const storySeedSchema = z.object({
   prompt: z.string(),
   note: z.string().optional(),
   status: factStatusSchema,
-  source: z.string().url(),
+  source: z.string().url().optional(),
 });
 
 const figureSchema = z.object({

@@ -12,13 +12,7 @@ export type SourceType =
   | "authority";
 export type SourceStrength = "strong" | "partial" | "needs-review";
 export type ContextLayer = "personal" | "impact" | "world";
-export type ConnectionReason =
-  | "shared theme"
-  | "similar work"
-  | "same era"
-  | "connected place"
-  | "shared context event"
-  | "historical thread";
+export type ConnectionReason = string;
 
 export type RelatedFigure = {
   figure: FigureEntry;
