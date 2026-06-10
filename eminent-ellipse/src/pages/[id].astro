@@ -6,6 +6,21 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Separator from "../components/Separator.astro";
 import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
+import { siteConfig } from "../site.config";
+import {
+  contextLayerLabels,
+  formatYear,
+  getContextLayer,
+  getFigureSourceStrength,
+  getFigureSourceStrengthLabel,
+  getGroupedReferences,
+  getOccupations,
+  getRelatedFigures,
+  getResearchTrailLinks,
+  getStatusLabel,
+  reliabilityCopy,
+  sourceTypeLabels,
+} from "../lib/figures";
 
 export const getStaticPaths = async () => {
   const figures = await getCollection("figures");
@@ -38,9 +53,51 @@ const nextFigure =
   ];
 
 const { Content } = await render(figure);
+const relatedFigures = getRelatedFigures(figure, figures);
+const occupations = getOccupations(figure);
+const description =
+  figure.data.summary ??
+  `Read about ${figure.data.name} in the ${siteConfig.title}.`;
+const importantWorks = figure.data.importantWorks?.map((work) =>
+  typeof work === "string" ? { title: work } : work,
+);
+const referenceGroups = getGroupedReferences(figure);
+const researchTrailLinks = getResearchTrailLinks(figure);
+const sourceStrength = getFigureSourceStrength(figure);
+const sourceStrengthLabel = getFigureSourceStrengthLabel(figure);
+const whatThisMeans =
+  "Reviewed items have a source behind them. Approximate items are useful context, not final proof. Needs source and beta review labels mark places where the archive is still checking the trail.";
+const formatDateRange = (item: { year?: number; startYear?: number; endYear?: number }) =>
+  typeof item.year === "number"
+    ? formatYear(item.year)
+    : [item.startYear, item.endYear]
+        .filter((year) => typeof year === "number")
+        .map((year) => formatYear(year))
+        .join("-");
+const contextEventGroups = (["personal", "impact", "world"] as const)
+  .map((layer) => ({
+    layer,
+    label: contextLayerLabels[layer],
+    events: figure.data.contextEvents?.filter((event) => getContextLayer(event) === layer) ?? [],
+  }))
+  .filter((group) => group.events.length > 0);
+const reasonLabels = {
+  "shared theme": "Shared theme",
+  "similar work": "Similar work",
+  "same era": "Same era",
+  "connected place": "Connected place",
+  "shared context event": "Shared event",
+  "historical thread": "Historical thread",
+};
 ---
 
-<BaseLayout title={figure.data.name}>
+<BaseLayout
+  title={figure.data.name}
+  description={description}
+  image={figure.data.image.src}
+  canonicalPath={`/${figure.id}`}
+  type="article"
+>
   <section>
     <SiteHeader />
 
@@ -54,7 +111,21 @@ const { Content } = await render(figure);
       />
 
       <div class="content">
+        <span class="beta-label">Archive beta</span>
         <h3>Biography</h3>
+
+        {figure.data.summary && <p class="summary">{figure.data.summary}</p>}
+        <p class="reliability-note">{reliabilityCopy}</p>
+        <div class="trust-strip" aria-label="Profile trust summary">
+          <span class={`source-strength ${sourceStrength}`}>
+            Sources: {sourceStrengthLabel}
+          </span>
+          <span class="status-pill">{getStatusLabel(figure.data.sourceCoverageStatus)}</span>
+        </div>
+        <details class="trust-explainer">
+          <summary>What this means</summary>
+          <p>{whatThisMeans}</p>
+        </details>
 
         <Content />
 
@@ -78,10 +149,10 @@ const { Content } = await render(figure);
           }
 
           {
-            figure.data.occupation && (
+            occupations.length > 0 && (
               <>
-                <dt>Occupation</dt>
-                <dd>{figure.data.occupation}</dd>
+                <dt>Occupations</dt>
+                <dd>{occupations.join(", ")}</dd>
               </>
             )
           }
@@ -94,44 +165,241 @@ const { Content } = await render(figure);
               </>
             )
           }
+
+          {
+            typeof figure.data.birthYear === "number" && (
+              <>
+                <dt>Born</dt>
+                <dd>
+                  {formatYear(figure.data.birthYear)}
+                  <span class="status-pill">{getStatusLabel(figure.data.dateStatus)}</span>
+                </dd>
+              </>
+            )
+          }
+
+          {
+            typeof figure.data.deathYear === "number" && (
+              <>
+                <dt>Died</dt>
+                <dd>
+                  {formatYear(figure.data.deathYear)}
+                  <span class="status-pill">{getStatusLabel(figure.data.dateStatus)}</span>
+                </dd>
+              </>
+            )
+          }
+
+          {
+            figure.data.tags?.length > 0 && (
+              <>
+                <dt>Tags</dt>
+                <dd>{figure.data.tags.join(", ")}</dd>
+              </>
+            )
+          }
+
+          {
+            figure.data.themes?.length > 0 && (
+              <>
+                <dt>Themes</dt>
+                <dd>{figure.data.themes.join(", ")}</dd>
+              </>
+            )
+          }
         </dl>
       </div>
 
       {
-        figure.data.importantWorks?.length > 0 && (
-          <aside class="works">
-            <h3>Important Works</h3>
+        (figure.data.places?.length > 0 || figure.data.contextEvents?.length > 0) && (
+          <aside class="context">
+            <h3>Context</h3>
+            <p class="reliability-note compact">Places, coordinates, and context events are beta metadata and may be approximate.</p>
 
-            <ul>
-              {figure.data.importantWorks.map(
-                (work) => (
-                  <li>{work}</li>
-                )
-              )}
-            </ul>
+            {figure.data.places?.length > 0 && (
+              <>
+                <h4>Places</h4>
+                <ul>
+                  {figure.data.places.map((place) => (
+                    <li>
+                      <strong>{place.name}</strong>
+                      {place.type && <span>{place.type}</span>}
+                      <span class="status-pill">{getStatusLabel(place.status)}</span>
+                      {place.source && (
+                        <a href={place.source} target="_blank" rel="noopener noreferrer">Source</a>
+                      )}
+                      {place.note && <small>{place.note}</small>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {contextEventGroups.map((group) => (
+              <>
+                <h4>{group.label}</h4>
+                <ul>
+                  {group.events.map((event) => (
+                    <li>
+                      <strong>{event.label}</strong>
+                      {formatDateRange(event) && <span>{formatDateRange(event)}</span>}
+                      {event.thread && <span>Thread: {event.thread}</span>}
+                      <span class="status-pill">{getStatusLabel(event.status)}</span>
+                      <div class="context-links">
+                        <a href={`/timeline?thread=${encodeURIComponent(event.thread ?? event.label)}#${figure.id}`}>Timeline</a>
+                        {event.place && <a href={`/map#${figure.id}`}>Map</a>}
+                        {event.source && (
+                          <a href={event.source} target="_blank" rel="noopener noreferrer">Source</a>
+                        )}
+                      </div>
+                      {event.note && <small>{event.note}</small>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ))}
           </aside>
         )
       }
 
-      {
-        figure.data.references?.length > 0 && (
-          <aside class="references">
-            <h3>References</h3>
+      <aside class="profile-rail" aria-label="Profile supporting details">
+        {
+          importantWorks?.length > 0 && (
+          <section class="works">
+            <h3>Important Works</h3>
 
             <ul>
-              {figure.data.references.map(
-                (reference) => (
+              {importantWorks.map(
+                (work) => (
                   <li>
-                    <a
-                      href={reference.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {reference.title}
-                    </a>
+                    <strong>{work.title}</strong>
+                    {(typeof work.year === "number" || typeof work.startYear === "number") && (
+                      <span>{formatYear(work.year ?? work.startYear)}</span>
+                    )}
+                    {work.status && <span class="status-pill">{getStatusLabel(work.status)}</span>}
+                    {work.source && (
+                      <a href={work.source} target="_blank" rel="noopener noreferrer">Source</a>
+                    )}
+                    {work.note && <small>{work.note}</small>}
                   </li>
                 )
               )}
+            </ul>
+          </section>
+          )
+        }
+
+        {
+          figure.data.openQuestions?.length > 0 && (
+          <section class="open-questions">
+            <h3>Open Questions</h3>
+            <ul>
+              {figure.data.openQuestions.map((question) => <li>{question}</li>)}
+            </ul>
+          </section>
+          )
+        }
+
+        {
+          referenceGroups.length > 0 && (
+          <section class="references">
+            <h3>Sources</h3>
+            <p class="reliability-note compact">Compact source cards show what each link helps support. Authority records are identity trails, not stand-alone proof.</p>
+
+            {referenceGroups.map((group) => (
+              <section class="source-group" aria-label={sourceTypeLabels[group.type]}>
+                <h4>{sourceTypeLabels[group.type]}</h4>
+                <ul class="source-card-list">
+                  {group.references.map((reference) => (
+                    <li class="source-card">
+                      <a
+                        href={reference.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {reference.title}
+                      </a>
+                      <div class="source-meta">
+                        <span class="source-type">{sourceTypeLabels[reference.type ?? group.type]}</span>
+                        <span class="status-pill">{getStatusLabel(reference.status)}</span>
+                      </div>
+                      {reference.supports?.length > 0 && (
+                        <div class="support-list">
+                          {reference.supports.map((support) => <span>{support}</span>)}
+                        </div>
+                      )}
+                      {reference.note && <small>{reference.note}</small>}
+                      {reference.authorityId && <small>Authority ID: {reference.authorityId}</small>}
+                      {reference.authorityUrl && (
+                        <a class="trail-link" href={reference.authorityUrl} target="_blank" rel="noopener noreferrer">
+                          Authority trail
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+
+            {researchTrailLinks.length > 0 && (
+              <div class="research-trail">
+                <h4>Research trail</h4>
+                <p>Start with the strongest trail links if you want to keep digging.</p>
+                <div class="trail-links">
+                  {researchTrailLinks.map((reference) => (
+                    <a href={reference.url} target="_blank" rel="noopener noreferrer">
+                      {reference.title}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+          )
+        }
+
+        <section class="creator-cta">
+          <h3>Follow The Archive</h3>
+          <p>More finds and process notes from {siteConfig.creator.name}.</p>
+
+          <div class="cta-links">
+            <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
+            <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a href={`mailto:?subject=${encodeURIComponent(`Historical Babes: ${figure.data.name}`)}&body=${encodeURIComponent(`${siteConfig.url}/${figure.id}`)}`}>Share</a>
+          </div>
+
+          {figure.data.originalInstagramUrl && (
+            <a
+              href={figure.data.originalInstagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Original Instagram post
+            </a>
+          )}
+        </section>
+      </aside>
+
+      {
+        relatedFigures.length > 0 && (
+          <aside class="related">
+            <h3>Related Babes</h3>
+            <ul>
+              {relatedFigures.map((related) => (
+                <li class="connection-card">
+                  <a href={`/${related.figure.id}`}>{related.figure.data.name}</a>
+                  {related.figure.data.lifespan && <span>{related.figure.data.lifespan}</span>}
+                  <div class="reason-list">
+                    {related.reasons.map((reason) => <span class="reason-badge">{reasonLabels[reason]}</span>)}
+                  </div>
+                  <p>{related.note ?? `${related.figure.data.name} has a ${related.reasons[0] ? reasonLabels[related.reasons[0]].toLowerCase() : "related archive"} connection with ${figure.data.name}.`}</p>
+                  <div class="connection-links">
+                    <a href={`/${related.figure.id}`}>Profile</a>
+                    <a href={`/map#${related.figure.id}`}>Map focus</a>
+                    <a href={`/timeline#${related.figure.id}`}>Timeline focus</a>
+                  </div>
+                </li>
+              ))}
             </ul>
           </aside>
         )
@@ -146,8 +414,9 @@ const { Content } = await render(figure);
     grid-template-areas:
       "img"
       "content"
-      "works"
-      "references";
+      "context"
+      "rail"
+      "related";
 
     grid-template-columns: 100%;
   }
@@ -158,8 +427,9 @@ const { Content } = await render(figure);
 
       grid-template-areas:
         "img img"
-        "content works"
-        "content references";
+        "content rail"
+        "context rail"
+        "related related";
     }
   }
 
@@ -171,28 +441,173 @@ const { Content } = await render(figure);
         220px;
 
       grid-template-areas:
-        "img content works"
-        "img content references";
+        "img content rail"
+        "img context rail"
+        "img related related";
     }
   }
 
-  .works {
-    grid-area: works;
+  .summary {
+    color: var(--color-text-alt);
+    font-size: 1.05rem;
+    line-height: 1.6;
   }
 
-  .references {
-    grid-area: references;
-    margin-top: 2rem;
+  .context {
+    grid-area: context;
+  }
+
+  .profile-rail {
+    grid-area: rail;
+    display: grid;
+    gap: 1rem;
+    align-self: start;
+  }
+
+  .related {
+    grid-area: related;
   }
 
   .works ul,
-  .references ul {
+  .context ul,
+  .related ul,
+  .open-questions ul {
     padding-left: 1rem;
     line-height: 1.5;
   }
 
-  .references a {
+  .context h4,
+  .source-group h4,
+  .research-trail h4 {
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  .context span,
+  .context small,
+  .related span {
+    display: block;
+    color: var(--color-text-alt);
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .context-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.4rem 0;
+  }
+
+  .context-links a {
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .trust-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+  }
+
+  .source-strength {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.55rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(0, 124, 137, 0.12);
+    color: var(--color-text);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .source-strength.partial,
+  .source-strength.approximate {
+    background: rgba(192, 84, 0, 0.12);
+  }
+
+  .source-strength.needs-review,
+  .source-strength.needs-source {
+    background: rgba(255, 77, 97, 0.14);
+  }
+
+  .trust-explainer {
+    margin: 0 0 1.5rem;
+    color: var(--color-text-alt);
+    line-height: 1.5;
+  }
+
+  .trust-explainer summary {
+    cursor: pointer;
+    color: var(--color-link);
+    font-weight: 800;
+  }
+
+  .source-card-list,
+  .related ul {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .source-card,
+  .connection-card {
+    padding: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+
+  .source-card a,
+  .trail-links a {
     word-break: break-word;
+    font-weight: 800;
+  }
+
+  .source-meta,
+  .support-list,
+  .trail-links,
+  .connection-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.55rem;
+  }
+
+  .source-type,
+  .support-list span {
+    display: inline-flex;
+    min-height: 1.45rem;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    color: var(--color-text-alt);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .source-card small,
+  .research-trail p,
+  .connection-card p {
+    display: block;
+    margin: 0.65rem 0 0;
+    color: var(--color-text-alt);
+    font-size: 0.85rem;
+    line-height: 1.45;
+  }
+
+  .trail-link,
+  .connection-links a {
+    font-size: 0.82rem;
+  }
+
+  .reason-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
   }
 </style>
 

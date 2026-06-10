@@ -2,12 +2,30 @@
 import "../styles/globals.css";
 import "../styles/layout.css";
 import "../styles/grid.css";
+import { siteConfig } from "../site.config";
 
 interface Props {
   title?: string;
+  description?: string;
+  image?: string;
+  canonicalPath?: string;
+  type?: string;
 }
 
-const { title = "Historical Figures" } = Astro.props;
+const {
+  title = siteConfig.title,
+  description = siteConfig.description,
+  image = "/images/historical-babes.gif",
+  canonicalPath = Astro.url.pathname,
+  type = "website",
+} = Astro.props;
+
+const pageTitle =
+  title === siteConfig.title
+    ? title
+    : `${title} | ${siteConfig.name}`;
+const canonicalUrl = new URL(canonicalPath, siteConfig.url).toString();
+const imageUrl = new URL(image, siteConfig.url).toString();
 ---
 
 <!doctype html>
@@ -20,7 +38,21 @@ const { title = "Historical Figures" } = Astro.props;
       content="width=device-width, initial-scale=1"
     />
 
-    <title>{title}</title>
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={siteConfig.name} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={imageUrl} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
 
     <script is:inline>
       const storedTheme =
@@ -34,40 +66,6 @@ const { title = "Historical Figures" } = Astro.props;
       }
     </script>
   </head>
-
-  <script is:inline>
-      const toggle =
-        document.getElementById("theme-toggle");
-
-      const html = document.documentElement;
-
-      if (toggle) {
-        const updateIcon = () => {
-          toggle.textContent =
-            html.dataset.theme === "dark"
-              ? "☀️"
-              : "🌙";
-        };
-
-        updateIcon();
-
-        toggle.addEventListener("click", () => {
-          const nextTheme =
-            html.dataset.theme === "dark"
-              ? "light"
-              : "dark";
-
-          html.dataset.theme = nextTheme;
-
-          localStorage.setItem(
-            "theme",
-            nextTheme
-          );
-
-          updateIcon();
-        });
-      }
-    </script>
 
   <body>
     <main class="site-container">

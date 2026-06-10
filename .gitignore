@@ -1,0 +1,7 @@
+.spark/
+changes/
+eminent-ellipse/src/content/drafts/*
+!eminent-ellipse/src/content/drafts/.gitkeep
+!eminent-ellipse/src/content/drafts/figures/
+eminent-ellipse/src/content/drafts/figures/*
+!eminent-ellipse/src/content/drafts/figures/.gitkeep

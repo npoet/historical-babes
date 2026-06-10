@@ -1,16 +1,23 @@
+---
+import { siteConfig } from "../site.config";
+---
+
 <footer class="site-footer">
   <div class="footer-right">
       <div class="footer-credit">
         <span>Historical Babes Archive</span>
 
-        <a
-          href="https://www.linkedin.com/in/nickpoet/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="social-link"
-        >
-          Site by Nick Poet
-        </a>
+        {siteConfig.siteMakers.map((maker, index) => (
+          <a
+            href={maker.linkedInUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="social-link"
+          >
+            {index === 0 ? "Site by " : "With "}
+            {maker.name}
+          </a>
+        ))}
       </div>
     </div>
 
@@ -24,10 +31,10 @@
 
   <div class="footer-right">
       <div>
-        © 2026 Amelia Poet
+        © 2026 {siteConfig.creator.name}
       </div>
       <a
-        href="https://www.instagram.com/ameliap0et"
+        href={siteConfig.creator.instagramUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Instagram"
@@ -67,7 +74,7 @@
       </a>
 
       <a
-        href="https://www.linkedin.com/in/amelia-poet-9a2201109/"
+        href={siteConfig.creator.linkedInUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="LinkedIn"
