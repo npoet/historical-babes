@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600" role="img" aria-labelledby="title desc">
+  <title id="title">Historical Babes profile placeholder</title>
+  <desc id="desc">A pink and purple placeholder portrait card for profiles that do not yet have a sourced image.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#120c18"/>
+      <stop offset="0.48" stop-color="#24112f"/>
+      <stop offset="1" stop-color="#4b1764"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#ff2f92"/>
+      <stop offset="0.5" stop-color="#d81bff"/>
+      <stop offset="1" stop-color="#7b2cff"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="36%" r="45%">
+      <stop offset="0" stop-color="#ff68b5" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#ff68b5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="1600" fill="url(#bg)"/>
+  <rect width="1200" height="1600" fill="url(#halo)"/>
+  <path d="M160 176h880v1248H160z" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="8"/>
+  <circle cx="600" cy="556" r="188" fill="rgba(255,255,255,.08)" stroke="url(#accent)" stroke-width="18"/>
+  <path d="M295 1168c42-236 164-354 305-354s263 118 305 354" fill="rgba(255,255,255,.08)" stroke="url(#accent)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M292 294h616" stroke="url(#accent)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M292 1310h616" stroke="url(#accent)" stroke-width="18" stroke-linecap="round"/>
+  <text x="600" y="1406" fill="#f7edf9" font-family="Inter, system-ui, sans-serif" font-size="72" font-weight="900" text-anchor="middle">Historical</text>
+  <text x="600" y="1490" fill="#ff68b5" font-family="Inter, system-ui, sans-serif" font-size="84" font-weight="900" text-anchor="middle">Babes</text>
+</svg>

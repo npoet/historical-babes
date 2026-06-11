@@ -1,6 +1,6 @@
 import http from "node:http";
 import { Buffer } from "node:buffer";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   cleanupDraft,
@@ -23,6 +23,19 @@ import { pathToFileURL } from "node:url";
 const host = "127.0.0.1";
 const port = Number.parseInt(process.env.PEOPLE_EDITOR_PORT || "4322", 10);
 const uploadDir = path.join(projectRoot, "public/images/editor-uploads");
+const publicImagesDir = path.join(projectRoot, "public/images");
+const defaultInstagramUrl = "https://www.instagram.com/ameliap0et/";
+const defaultSourceCredit = "Amelia Poet Instagram";
+const defaultProfileImage = "/images/profile-placeholder.svg";
+
+const imageContentTypes = {
+  ".gif": "image/gif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".svg": "image/svg+xml; charset=utf-8",
+  ".webp": "image/webp",
+};
 
 const send = (response, status, body, headers = {}) => {
   const payload = typeof body === "string" ? body : JSON.stringify(body);
@@ -42,51 +55,100 @@ const readJsonBody = async (request) => {
 };
 
 export const editorPage = String.raw`<!doctype html>
-<html lang="en">
+<html lang="en" data-editor-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Historical Babes People Editor</title>
   <style>
-    :root { color-scheme: light dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    body { margin: 0; background: #f7f4ef; color: #24211d; }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; border-bottom: 1px solid #d7cec0; background: #fffaf2; }
-    h1 { margin: 0; font-size: 20px; }
+    :root {
+      color-scheme: dark;
+      font-family: "Instrument Sans Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --color-bg: #120c18;
+      --color-text: #f7edf9;
+      --color-text-alt: #b8a8c5;
+      --color-placeholder: #1e1726;
+      --color-link: #ff68b5;
+      --color-link-hover: #ff9ed1;
+      --color-pink: #ff2f92;
+      --color-magenta: #d81bff;
+      --color-purple: #7b2cff;
+      --color-red: #ff4d61;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --panel-bg: rgba(30, 23, 38, .78);
+      --card-bg: #1e1726;
+      --shadow: 0 18px 50px rgba(0, 0, 0, .24);
+    }
+    html[data-editor-theme="light"] {
+      color-scheme: light;
+      --color-text: #24112f;
+      --color-text-alt: #665477;
+      --color-bg: #fffafd;
+      --color-placeholder: #fff0f7;
+      --color-link: #b4005b;
+      --color-link-hover: #6f20d8;
+      --color-pink: #b4005b;
+      --color-magenta: #9c00c9;
+      --color-purple: #5922c7;
+      --color-red: #b93245;
+      --border-color: rgba(180, 0, 91, 0.2);
+      --panel-bg: rgba(255, 240, 247, 0.72);
+      --card-bg: #ffffff;
+      --shadow: 0 18px 50px rgba(36, 17, 47, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--color-bg); color: var(--color-text); line-height: 1; font-variant-ligatures: none; -webkit-font-smoothing: antialiased; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; padding: 2rem clamp(1rem, 3vw, 2rem) 1.5rem; border-bottom: 1px solid var(--border-color); background: var(--color-bg); }
+    h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 3.6rem); line-height: .85; font-weight: 900; letter-spacing: 0; }
+    .hero-accent { background: linear-gradient(90deg, var(--color-pink), var(--color-magenta), var(--color-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: var(--color-text-alt); font-size: .9rem; line-height: 1.45; max-width: 44rem; }
     main { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: calc(100vh - 65px); }
-    aside { border-right: 1px solid #d7cec0; padding: 16px; overflow: auto; background: #fbf7ef; }
-    section { padding: 18px; overflow: auto; }
+    aside { border-right: 1px solid var(--border-color); padding: 1rem; overflow: auto; background: var(--panel-bg); }
+    section { padding: clamp(1rem, 2vw, 1.5rem); overflow: auto; }
     button, input, select, textarea { font: inherit; }
-    button { border: 1px solid #6e5f4a; background: #2f5f57; color: white; border-radius: 6px; padding: 8px 11px; cursor: pointer; }
-    button.secondary { background: #fffaf2; color: #2f332e; }
-    button.danger { background: #884437; }
+    button { border: 1px solid transparent; background: var(--color-text); color: var(--color-bg); border-radius: 999px; padding: .62rem .85rem; cursor: pointer; font-weight: 800; line-height: 1; transition: transform .2s ease, border-color .2s ease, color .2s ease, background-color .2s ease; }
+    button:hover { transform: translateY(-1px); color: var(--color-link-hover); border-color: var(--color-link-hover); }
+    button.secondary { background: var(--card-bg); color: var(--color-text); border-color: var(--border-color); }
+    button.danger { background: var(--color-red); color: white; }
     button:disabled { opacity: .55; cursor: wait; }
-    input, select, textarea { box-sizing: border-box; width: 100%; border: 1px solid #b8ae9e; border-radius: 6px; padding: 8px; background: white; color: #24211d; }
+    input, select, textarea { width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: .68rem .75rem; background: var(--card-bg); color: var(--color-text); }
+    input:focus, select:focus, textarea:focus { outline: 2px solid rgba(255, 47, 146, .26); border-color: var(--color-pink); }
     textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
     textarea.mono, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    label { display: grid; gap: 5px; font-size: 13px; font-weight: 650; color: #423b32; }
-    fieldset { border: 1px solid #d7cec0; border-radius: 8px; padding: 14px; background: #fffaf2; }
-    legend { padding: 0 6px; font-weight: 800; color: #453b2f; }
+    label { display: grid; gap: .35rem; font-size: .82rem; font-weight: 800; color: var(--color-text); }
+    fieldset { border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; background: var(--panel-bg); box-shadow: var(--shadow); }
+    legend { padding: 0 .45rem; font-weight: 900; color: var(--color-pink); text-transform: uppercase; font-size: .75rem; }
     .stack { display: grid; gap: 12px; }
     .row { display: flex; gap: 8px; align-items: end; }
     .row > * { flex: 1; }
-    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .inline-control { display: inline-flex; align-items: center; gap: .45rem; width: auto; min-height: 2.3rem; padding: 0 .25rem; }
+    .inline-control input { width: 4.8rem; padding: .5rem .6rem; }
+    .action-bar { padding: .45rem; border: 1px solid var(--border-color); border-radius: 999px; background: var(--card-bg); box-shadow: var(--shadow); }
     .list { display: grid; gap: 8px; }
-    .profile { text-align: left; background: white; color: #24211d; border-color: #d7cec0; }
-    .profile small { display: block; color: #675d50; margin-top: 2px; }
-    .badge { display: inline-flex; align-items: center; border: 1px solid #a89a87; border-radius: 999px; padding: 2px 8px; font-size: 12px; background: #fff; color: #3c342b; }
+    .profile { text-align: left; background: var(--card-bg); color: var(--color-text); border-color: var(--border-color); border-radius: 8px; line-height: 1.2; }
+    .profile.active { border-color: var(--color-pink); box-shadow: 0 0 0 2px rgba(255, 47, 146, .18); }
+    .profile small { display: block; color: var(--color-text-alt); margin-top: .25rem; font-weight: 650; }
+    .badge { display: inline-flex; align-items: center; width: fit-content; min-height: 1.55rem; border: 1px solid var(--border-color); border-radius: 999px; padding: .25rem .55rem; font-size: .72rem; font-weight: 800; background: var(--card-bg); color: var(--color-pink); text-transform: uppercase; }
     .editor { display: grid; gap: 14px; max-width: 1180px; }
     .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
     .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
     .four { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-    .notice { border: 1px solid #b8ae9e; border-radius: 6px; padding: 10px; background: #fffaf2; white-space: pre-wrap; }
+    .notice { border: 1px solid var(--border-color); border-radius: 8px; padding: .75rem; background: var(--card-bg); color: var(--color-text-alt); white-space: pre-wrap; line-height: 1.45; }
     .repeat-list { display: grid; gap: 10px; }
-    .repeat-item { display: grid; gap: 10px; border: 1px solid #d7cec0; border-radius: 8px; padding: 10px; background: white; }
+    .repeat-item { display: grid; gap: 10px; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--card-bg); }
+    .image-preview { display: grid; gap: .5rem; align-content: start; }
+    .image-preview img { width: min(220px, 100%); aspect-ratio: 3 / 4; object-fit: cover; border: 1px solid var(--border-color); border-radius: 8px; background: var(--color-placeholder); box-shadow: var(--shadow); }
+    .image-preview small { color: var(--color-text-alt); line-height: 1.4; }
     .token-field { display: grid; gap: 8px; }
-    .token-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; border: 1px solid #b8ae9e; border-radius: 6px; padding: 6px; background: white; }
-    .token { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #a89a87; border-radius: 999px; padding: 3px 7px; background: #f7f4ef; color: #24211d; font-size: 12px; }
+    .token-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; border: 1px solid var(--border-color); border-radius: 8px; padding: 6px; background: var(--card-bg); }
+    .token { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-color); border-radius: 999px; padding: 3px 7px; background: var(--color-placeholder); color: var(--color-text); font-size: 12px; font-weight: 750; }
     .token button { border: 0; background: transparent; color: inherit; padding: 0 2px; line-height: 1; }
     .readiness ul { margin: 8px 0 0; padding-left: 20px; }
-    pre { margin: 0; overflow: auto; border: 1px solid #b8ae9e; border-radius: 6px; padding: 10px; background: #fffaf2; max-height: 260px; }
+    .search-links { display: grid; gap: .45rem; margin: .35rem 0 0; }
+    .search-links a { color: var(--color-link); line-height: 1.35; text-decoration: none; }
+    .search-links a:hover { color: var(--color-link-hover); }
+    pre { margin: 0; overflow: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--color-placeholder); max-height: 260px; line-height: 1.45; }
     details > summary { cursor: pointer; font-weight: 800; margin-bottom: 8px; }
     @media (max-width: 920px) {
       main { grid-template-columns: 1fr; }
@@ -94,39 +156,55 @@ export const editorPage = String.raw`<!doctype html>
       .two, .three, .four { grid-template-columns: 1fr; }
       .row { flex-direction: column; align-items: stretch; }
     }
-    @media (prefers-color-scheme: dark) {
-      body { background: #1f211e; color: #eee7dc; }
-      header, aside, fieldset, input, select, textarea, .profile, .notice, pre, .repeat-item, .token-list { background: #292b27; color: #eee7dc; border-color: #555044; }
-      button.secondary { background: #292b27; color: #eee7dc; }
-      label, legend, .profile small { color: #d5cab8; }
-      .badge, .token { background: #33352f; color: #eee7dc; border-color: #686052; }
-    }
   </style>
 </head>
 <body>
   <header>
-    <h1>People Editor</h1>
-    <span class="badge">localhost only</span>
+    <div>
+      <h1>Historical <span class="hero-accent">Babes</span> Editor</h1>
+      <div class="subtitle">Local draft intake, enrichment review, and publish prep for the profile collection.</div>
+    </div>
+    <div class="toolbar">
+      <label>Editor Theme
+        <select id="editorTheme">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </label>
+      <span class="badge">localhost only</span>
+    </div>
   </header>
   <main>
     <aside class="stack">
       <div class="toolbar">
-        <button id="refresh" class="secondary">Refresh</button>
-        <button id="newDraft">New Draft</button>
+        <button id="refresh" type="button" class="secondary">Refresh</button>
+        <button id="newDraft" type="button">New Draft</button>
+        <button id="resetForm" type="button" class="secondary">Reset Form</button>
       </div>
+      <label>Show
+        <select id="profileKindFilter">
+          <option value="all">Drafts + published</option>
+          <option value="draft">Drafts only</option>
+          <option value="published">Published only</option>
+        </select>
+      </label>
       <label>Filter <input id="filter" autocomplete="off" placeholder="Name or slug"></label>
+      <div id="profileCounts" class="badge">0 profiles</div>
       <div id="profiles" class="list"></div>
     </aside>
     <section>
       <div class="editor">
-        <div class="toolbar">
-          <button id="save">Save Draft</button>
-          <button id="copy" class="secondary">Copy Published To Draft</button>
-          <button id="promote" class="secondary">Promote Draft</button>
-          <button id="demote" class="secondary">Move Published To Draft</button>
-          <button id="enrich" class="secondary">Review Enrichment</button>
-          <button id="cleanupDraft" class="secondary">Clean Up Draft</button>
-          <button id="delete" class="danger">Delete Loaded</button>
+        <div class="toolbar action-bar">
+          <button id="save" type="button">Save Draft</button>
+          <button id="copy" type="button" class="secondary">Copy Published To Draft</button>
+          <button id="promote" type="button" class="secondary">Promote Draft</button>
+          <button id="demote" type="button" class="secondary">Move Published To Draft</button>
+          <button id="enrich" type="button" class="secondary">Review Enrichment</button>
+          <button id="sourceSearches" type="button" class="secondary">Open Source Searches</button>
+          <label class="inline-control">Search Tabs <input id="sourceSearchLimit" type="number" min="1" max="25" step="1" value="10"></label>
+          <button id="openSite" type="button" class="secondary">Open Site View</button>
+          <button id="cleanupDraft" type="button" class="secondary">Clean Up Draft</button>
+          <button id="delete" type="button" class="danger">Delete Loaded</button>
         </div>
         <div id="status" class="notice">Load a profile or create a new draft.</div>
         <div id="readiness" class="notice readiness">Review readiness will appear after loading or editing a profile.</div>
@@ -139,7 +217,7 @@ export const editorPage = String.raw`<!doctype html>
           </div>
           <div class="two">
             <label>Name <input id="name" autocomplete="off"></label>
-            <label>Lifespan <input id="lifespan" placeholder="1815-1852"></label>
+            <label>Lifespan <input id="lifespan" placeholder="Auto from birth/death years"></label>
           </div>
           <label>Summary <textarea id="summary"></textarea></label>
           <div class="three">
@@ -154,8 +232,18 @@ export const editorPage = String.raw`<!doctype html>
             </label>
           </div>
           <div class="three">
-            <label>Nationality <input id="nationality"></label>
-            <label>Era <input id="era" placeholder="19th century"></label>
+            <label>Nationalities
+              <span class="token-field">
+                <span id="nationalities" class="token-list" data-token-list></span>
+                <span class="row"><input data-token-input="nationalities" list="nationalitySuggestions" placeholder="Add nationality"><button type="button" class="secondary" data-token-add="nationalities">Add</button></span>
+              </span>
+            </label>
+            <label>Eras
+              <span class="token-field">
+                <span id="eras" class="token-list" data-token-list></span>
+                <span class="row"><input data-token-input="eras" list="eraSuggestions" placeholder="Add era"><button type="button" class="secondary" data-token-add="eras">Add</button></span>
+              </span>
+            </label>
             <label>Original Instagram URL <input id="originalInstagramUrl" type="url"></label>
           </div>
           <div class="three">
@@ -177,6 +265,9 @@ export const editorPage = String.raw`<!doctype html>
                 <span class="row"><input data-token-input="tags" list="tagSuggestions" placeholder="Add tag"><button type="button" class="secondary" data-token-add="tags">Add</button></span>
               </span>
             </label>
+          </div>
+          <div class="toolbar">
+            <button id="suggestTaxonomy" type="button" class="secondary">Suggest Tags + Themes</button>
           </div>
           <div class="two">
             <label>Source Credit <input id="sourceCredit"></label>
@@ -202,49 +293,55 @@ export const editorPage = String.raw`<!doctype html>
         <fieldset class="stack">
           <legend>Picture</legend>
           <div class="two">
-            <label>Image Path <input id="imageSrc" placeholder="/images/historical-babes.gif"></label>
-            <label>Image Alt Text <input id="imageAlt"></label>
+            <div class="image-preview">
+              <img id="imagePreview" src="${defaultProfileImage}" alt="Historical Babes placeholder portrait preview">
+              <small>Placeholder is used until a sourced profile image is chosen.</small>
+            </div>
+            <div class="stack">
+              <label>Image Path <input id="imageSrc" placeholder="${defaultProfileImage}"></label>
+              <label>Image Alt Text <input id="imageAlt"></label>
+            </div>
           </div>
           <div class="row">
             <label>Upload Local Image <input id="imageUpload" type="file" accept="image/*"></label>
-            <button id="uploadImage" class="secondary">Upload To Site Images</button>
+            <button id="uploadImage" type="button" class="secondary">Upload To Site Images</button>
           </div>
         </fieldset>
 
         <fieldset class="stack">
           <legend>Places</legend>
           <div id="places" class="repeat-list"></div>
-          <button id="addPlace" class="secondary">Add Place</button>
+          <button id="addPlace" type="button" class="secondary">Add Place</button>
         </fieldset>
 
         <fieldset class="stack">
           <legend>Timeline Points</legend>
           <div id="events" class="repeat-list"></div>
-          <button id="addEvent" class="secondary">Add Point</button>
+          <button id="addEvent" type="button" class="secondary">Add Point</button>
         </fieldset>
 
         <fieldset class="stack">
           <legend>Important Works</legend>
           <div id="works" class="repeat-list"></div>
-          <button id="addWork" class="secondary">Add Work</button>
+          <button id="addWork" type="button" class="secondary">Add Work</button>
         </fieldset>
 
         <fieldset class="stack">
           <legend>Story Prompts</legend>
           <div id="storySeeds" class="repeat-list"></div>
-          <button id="addStorySeed" class="secondary">Add Story Prompt</button>
+          <button id="addStorySeed" type="button" class="secondary">Add Story Prompt</button>
         </fieldset>
 
         <fieldset class="stack">
           <legend>References</legend>
           <div id="references" class="repeat-list"></div>
-          <button id="addReference" class="secondary">Add Reference</button>
+          <button id="addReference" type="button" class="secondary">Add Reference</button>
         </fieldset>
 
         <fieldset class="stack">
           <legend>Related People</legend>
           <div id="related" class="repeat-list"></div>
-          <button id="addRelated" class="secondary">Add Related Person</button>
+          <button id="addRelated" type="button" class="secondary">Add Related Person</button>
         </fieldset>
 
         <fieldset class="stack">
@@ -264,9 +361,15 @@ export const editorPage = String.raw`<!doctype html>
         </details>
 
         <label>Enrichment Proposal <pre id="proposal">No proposal yet.</pre></label>
+        <details open>
+          <summary>Source Search Queue</summary>
+          <div id="sourceSearchQueue" class="notice">Open source searches to generate targeted links.</div>
+        </details>
         <datalist id="jobSuggestions"></datalist>
         <datalist id="tagSuggestions"></datalist>
         <datalist id="themeSuggestions"></datalist>
+        <datalist id="eraSuggestions"></datalist>
+        <datalist id="nationalitySuggestions"></datalist>
         <datalist id="threadSuggestions"></datalist>
         <datalist id="personSuggestions"></datalist>
         <datalist id="supportSuggestions"></datalist>
@@ -275,7 +378,7 @@ export const editorPage = String.raw`<!doctype html>
     </section>
   </main>
   <script>
-    const state = { profiles: [], loaded: null };
+    const state = { profiles: [], loaded: null, slugTouched: false };
     const allowed = {
       placeTypes: ["birth", "death", "lived", "worked", "studied", "active", "event"],
       statuses: ["needs-source", "approximate", "reviewed"],
@@ -285,7 +388,7 @@ export const editorPage = String.raw`<!doctype html>
       supports: ["dates", "place", "work", "context event", "image", "quote", "background"],
       reasons: ["shared theme", "similar work", "same era", "connected place", "shared context event", "historical thread"],
     };
-    const ids = ["profiles", "filter", "status", "readiness", "slug", "kind", "name", "summary", "lifespan", "birthYear", "deathYear", "dateStatus", "nationality", "era", "originalInstagramUrl", "occupations", "themes", "tags", "sourceCredit", "sourceCoverageStatus", "sourceStrength", "imageSrc", "imageAlt", "imageUpload", "places", "events", "works", "storySeeds", "references", "related", "body", "openQuestions", "frontmatter", "proposal", "refresh", "newDraft", "save", "copy", "promote", "demote", "enrich", "cleanupDraft", "delete", "addPlace", "addEvent", "addWork", "addStorySeed", "addReference", "addRelated", "uploadImage", "jobSuggestions", "tagSuggestions", "themeSuggestions", "threadSuggestions", "personSuggestions", "supportSuggestions", "reasonSuggestions"];
+    const ids = ["profiles", "editorTheme", "profileKindFilter", "profileCounts", "filter", "status", "readiness", "slug", "kind", "name", "summary", "lifespan", "birthYear", "deathYear", "dateStatus", "nationalities", "eras", "originalInstagramUrl", "occupations", "themes", "tags", "sourceCredit", "sourceCoverageStatus", "sourceStrength", "imageSrc", "imageAlt", "imagePreview", "imageUpload", "places", "events", "works", "storySeeds", "references", "related", "body", "openQuestions", "frontmatter", "proposal", "sourceSearchQueue", "refresh", "newDraft", "resetForm", "save", "copy", "promote", "demote", "suggestTaxonomy", "enrich", "sourceSearchLimit", "sourceSearches", "openSite", "cleanupDraft", "delete", "addPlace", "addEvent", "addWork", "addStorySeed", "addReference", "addRelated", "uploadImage", "jobSuggestions", "tagSuggestions", "themeSuggestions", "eraSuggestions", "nationalitySuggestions", "threadSuggestions", "personSuggestions", "supportSuggestions", "reasonSuggestions"];
     const els = Object.fromEntries(ids.map((id) => [id, document.querySelector("#" + id)]));
 
     const api = async (url, options) => {
@@ -297,13 +400,34 @@ export const editorPage = String.raw`<!doctype html>
       if (!response.ok) throw new Error(data.error || "Request failed");
       return data;
     };
-    const setStatus = (message) => { els.status.textContent = message; };
+    const setStatus = (message) => { els.status.textContent = new Date().toLocaleTimeString() + " - " + message; };
     const csv = (value) => value.split(",").map((item) => item.trim()).filter(Boolean);
     const lines = (value) => value.split("\n").map((item) => item.trim()).filter(Boolean);
+    const slugify = (value) => String(value || "")
+      .normalize("NFKD")
+      .replace(/[^\w\s-]/g, "")
+      .trim()
+      .toLowerCase()
+      .replace(/[-\s]+/g, "-");
     const quote = (value) => JSON.stringify(value || "");
     const numberOrBlank = (value) => value === "" || value === undefined ? "" : Number.parseInt(value, 10);
     const setValue = (id, value) => { els[id].value = value ?? ""; };
     const getValue = (id) => els[id].value.trim();
+    const defaultInstagramUrl = "${defaultInstagramUrl}";
+    const defaultSourceCredit = "${defaultSourceCredit}";
+    const defaultProfileImage = "${defaultProfileImage}";
+    const applyEditorTheme = (theme) => {
+      const next = theme === "light" ? "light" : "dark";
+      document.documentElement.dataset.editorTheme = next;
+      els.editorTheme.value = next;
+      localStorage.setItem("peopleEditorTheme", next);
+    };
+    applyEditorTheme(localStorage.getItem("peopleEditorTheme") || "dark");
+    const syncImagePreview = () => {
+      const src = getValue("imageSrc") || defaultProfileImage;
+      els.imagePreview.src = src;
+      els.imagePreview.alt = getValue("imageAlt") || "Historical Babes placeholder portrait preview";
+    };
 
     const optionHtml = (values, selected) => values.map((value) => "<option value=\"" + value + "\"" + (value === selected ? " selected" : "") + ">" + value + "</option>").join("");
     const removeButton = () => '<button type="button" class="secondary" data-remove>Remove</button>';
@@ -316,7 +440,12 @@ export const editorPage = String.raw`<!doctype html>
       token.className = "token";
       token.dataset.tokenValue = normalized;
       token.innerHTML = '<span>' + escapeHtml(normalized) + '</span><button type="button" title="Remove">x</button>';
-      token.querySelector("button").addEventListener("click", () => { token.remove(); buildFrontmatter(); });
+      token.querySelector("button").addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        token.remove();
+        buildFrontmatter();
+      });
       container.append(token);
     };
     const addToken = (id) => {
@@ -331,6 +460,154 @@ export const editorPage = String.raw`<!doctype html>
       values.filter(Boolean).forEach((value) => renderToken(els[id], value.toString()));
     };
     const readTokens = (id) => tokenValues(els[id]);
+    const unique = (values) => [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+    const googleUrl = (query) => "https://www.google.com/search?q=" + encodeURIComponent(query);
+    const hostOf = (url) => {
+      try {
+        return new URL(url, window.location.href).hostname.replace(/^www\./, "");
+      } catch {
+        return "";
+      }
+    };
+    const sourceSearchLimit = () => Math.max(1, Math.min(25, Number.parseInt(getValue("sourceSearchLimit") || "10", 10) || 10));
+    const searchLink = (query, index) => '<a href="' + googleUrl(query) + '" target="_blank" rel="noopener">' + (index + 1) + ". " + escapeHtml(query) + "</a>";
+    const renderSourceSearchQueue = (queries) => {
+      els.sourceSearchQueue.innerHTML = queries.length
+        ? '<div class="search-links">' + queries.map(searchLink).join("") + "</div>"
+        : "Add a name before opening source searches.";
+    };
+    const buildSourceSearchQueries = () => {
+      const name = getValue("name") || getValue("slug");
+      if (!name) return [];
+      const places = readRepeater(els.places, ["latitude", "longitude", "startYear", "endYear"]);
+      const events = readRepeater(els.events, ["year", "startYear", "endYear"]);
+      const works = readRepeater(els.works, ["year", "startYear", "endYear"]);
+      const references = readRepeater(els.references);
+      const roles = readTokens("occupations");
+      const themes = readTokens("themes");
+      const eras = readTokens("eras");
+      const nationalities = readTokens("nationalities");
+      const dates = [getValue("birthYear"), getValue("deathYear")].filter(Boolean).join(" ");
+      const exact = '"' + name + '"';
+      const base = [
+        exact + " official biography",
+        exact + " birth date death date",
+        exact + " archive primary sources",
+        exact + " museum collection biography",
+        exact + " library special collections",
+        exact + " university biography",
+        exact + " authority record VIAF Library of Congress",
+        exact + " encyclopedia reliable source",
+        exact + " photograph portrait public domain source",
+        exact + " quotes letters writings primary source",
+      ];
+      if (dates) {
+        base.push(exact + " " + dates + " birth death");
+        base.push(exact + " " + dates + " biography archive");
+      }
+      nationalities.slice(0, 2).forEach((nationality) => {
+        base.push(exact + " " + nationality + " archive biography");
+        base.push(exact + " " + nationality + " museum");
+      });
+      roles.slice(0, 3).forEach((role) => {
+        base.push(exact + " " + role + " primary source");
+        base.push(exact + " " + role + " historical impact");
+      });
+      themes.slice(0, 2).forEach((theme) => {
+        base.push(exact + " " + theme + " historical context");
+        base.push(exact + " " + theme + " source");
+      });
+      eras.slice(0, 2).forEach((era) => {
+        base.push(exact + " " + era + " historical context archive");
+        base.push(exact + " " + era + " timeline");
+      });
+      places.slice(0, 4).forEach((place) => {
+        if (place.name) base.push(exact + " " + '"' + place.name + '"' + " source");
+        if (place.name && place.type) base.push(exact + " " + place.type + " " + '"' + place.name + '"');
+      });
+      events.slice(0, 4).forEach((event) => {
+        if (event.label) base.push(exact + " " + '"' + event.label + '"' + " source");
+        if (event.thread) base.push(exact + " " + '"' + event.thread + '"' + " archive");
+        if (event.year && event.label) base.push(exact + " " + event.year + " " + '"' + event.label + '"');
+      });
+      works.slice(0, 3).forEach((work) => {
+        if (work.title) base.push(exact + " " + '"' + work.title + '"' + " primary source");
+        if (work.title) base.push(exact + " " + '"' + work.title + '"' + " archive");
+      });
+      references.slice(0, 4).forEach((reference) => {
+        if (reference.title && reference.title !== defaultSourceCredit) base.push(exact + " " + '"' + reference.title + '"');
+        if (reference.url && hostOf(reference.url)) base.push(exact + " " + hostOf(reference.url));
+      });
+      return unique(base).slice(0, sourceSearchLimit());
+    };
+    const openSourceSearches = () => {
+      const queries = buildSourceSearchQueries();
+      renderSourceSearchQueue(queries);
+      if (!queries.length) return setStatus("Add a name before opening source searches.");
+      let opened = 0;
+      queries.forEach((query) => {
+        const tab = window.open(googleUrl(query), "_blank", "noopener");
+        if (tab) opened += 1;
+      });
+      setStatus(opened
+        ? "Opened " + opened + " of " + queries.length + " targeted source search tabs. The full search queue is also listed below."
+        : "Your browser blocked the source search tabs. Use the generated search queue links below or allow popups for this local editor.");
+    };
+    const computedLifespan = () => {
+      const birth = getValue("birthYear");
+      const death = getValue("deathYear");
+      if (birth && death) return birth + "-" + death;
+      if (birth) return birth + "-";
+      return "";
+    };
+    const syncLifespan = () => {
+      const next = computedLifespan();
+      if (!next) return;
+      setValue("lifespan", next);
+    };
+    const syncSlugFromName = () => {
+      if (state.slugTouched) return;
+      const suggested = slugify(getValue("name"));
+      if (suggested) setValue("slug", suggested);
+    };
+    const addSuggestionToken = (id, value) => {
+      renderToken(els[id], value);
+    };
+    const suggestTaxonomy = () => {
+      const occupations = readTokens("occupations").join(" ").toLowerCase();
+      const eras = readTokens("eras");
+      const nationalities = readTokens("nationalities");
+      const added = [];
+      nationalities.forEach((value) => {
+        addSuggestionToken("tags", value);
+        added.push(value);
+      });
+      eras.forEach((value) => {
+        addSuggestionToken("tags", value);
+        added.push(value);
+      });
+      readTokens("occupations").forEach((value) => {
+        addSuggestionToken("tags", value);
+        added.push(value);
+      });
+      const themeRules = [
+        [/activist|suffrag|labor|civil rights|reformer|resistance|abolition/i, "Activism"],
+        [/writer|author|poet|journalist|novelist|screenwriter|editor/i, "Writing"],
+        [/teacher|educator|professor|student|school|university/i, "Education"],
+        [/scientist|chemist|physicist|astronomer|engineer|inventor|mathematician|virologist|technologist/i, "Science and Innovation"],
+        [/artist|performer|magician|musician|dancer|chef|guitarist|illustrator|cartographer|designer|cookbook/i, "Arts and Culture"],
+        [/queen|ruler|military|war|spy|diplomat|politic|power/i, "Power and Resistance"],
+      ];
+      themeRules.forEach(([pattern, theme]) => {
+        if (pattern.test(occupations + " " + eras.join(" "))) {
+          addSuggestionToken("themes", theme);
+          added.push(theme);
+        }
+      });
+      addSuggestionToken("themes", "Global History");
+      buildFrontmatter();
+      setStatus(added.length ? "Added taxonomy suggestions from current fields." : "No new suggestions found from current fields.");
+    };
     const tokenControlHtml = (key, values, list, placeholder) => [
       '<span class="token-field">',
       '<span class="token-list" data-token-list data-key="' + key + '"></span>',
@@ -542,10 +819,21 @@ export const editorPage = String.raw`<!doctype html>
         "draft: true",
         "reviewed: false",
       ];
-      const scalar = ["summary", "lifespan", "nationality", "era", "sourceCredit", "originalInstagramUrl"];
+      syncLifespan();
+      const scalar = ["summary", "lifespan", "sourceCredit", "originalInstagramUrl"];
       scalar.forEach((key) => { const value = getValue(key); if (value) out.push(key + ": " + quote(value)); });
       ["birthYear", "deathYear"].forEach((key) => { const value = numberOrBlank(getValue(key)); if (value !== "") out.push(key + ": " + value); });
       out.push("dateStatus: " + getValue("dateStatus"));
+      const nationalities = readTokens("nationalities");
+      if (nationalities.length) {
+        pushList(out, "nationalities", nationalities);
+        out.push("nationality: " + quote(nationalities.join(", ")));
+      }
+      const eras = readTokens("eras");
+      if (eras.length) {
+        pushList(out, "eras", eras);
+        out.push("era: " + quote(eras.join(", ")));
+      }
       const occupations = readTokens("occupations");
       if (occupations.length) {
         pushList(out, "occupations", occupations);
@@ -557,8 +845,8 @@ export const editorPage = String.raw`<!doctype html>
       out.push("sourceStrength: " + getValue("sourceStrength"));
       pushList(out, "openQuestions", readTokens("openQuestions"));
       out.push("image:");
-      out.push("  src: " + (getValue("imageSrc") || "/images/historical-babes.gif"));
-      out.push("  alt: " + quote(getValue("imageAlt") || "Draft profile image"));
+      out.push("  src: " + (getValue("imageSrc") || defaultProfileImage));
+      out.push("  alt: " + quote(getValue("imageAlt") || "Historical Babes placeholder portrait"));
       pushObjectList(out, "places", readRepeater(els.places, ["latitude", "longitude", "startYear", "endYear"]));
       pushObjectList(out, "contextEvents", readRepeater(els.events, ["year", "startYear", "endYear"]));
       pushObjectList(out, "importantWorks", readRepeater(els.works, ["year", "startYear", "endYear"]));
@@ -601,6 +889,7 @@ export const editorPage = String.raw`<!doctype html>
     const fillForm = (profile) => {
       const data = { ...parseSimple(profile.frontmatter), ...(profile.data || {}) };
       const image = data.image || {};
+      state.slugTouched = true;
       setValue("slug", profile.id);
       setValue("kind", profile.kind);
       setValue("name", data.name);
@@ -609,17 +898,18 @@ export const editorPage = String.raw`<!doctype html>
       setValue("birthYear", data.birthYear);
       setValue("deathYear", data.deathYear);
       setValue("dateStatus", data.dateStatus || "needs-source");
-      setValue("nationality", data.nationality);
-      setValue("era", data.era);
-      setValue("originalInstagramUrl", data.originalInstagramUrl);
+      setTokens("nationalities", Array.isArray(data.nationalities) ? data.nationalities : csv(data.nationality || ""));
+      setTokens("eras", Array.isArray(data.eras) ? data.eras : csv(data.era || ""));
+      setValue("originalInstagramUrl", data.originalInstagramUrl || defaultInstagramUrl);
       setTokens("occupations", Array.isArray(data.occupations) ? data.occupations : csv(data.occupation || ""));
       setTokens("themes", Array.isArray(data.themes) ? data.themes : []);
       setTokens("tags", Array.isArray(data.tags) ? data.tags : []);
-      setValue("sourceCredit", data.sourceCredit);
+      setValue("sourceCredit", data.sourceCredit || defaultSourceCredit);
       setValue("sourceCoverageStatus", data.sourceCoverageStatus || "needs-source");
       setValue("sourceStrength", data.sourceStrength || "needs-review");
-      setValue("imageSrc", image.src || data.imageSrc || "/images/historical-babes.gif");
+      setValue("imageSrc", image.src || data.imageSrc || defaultProfileImage);
       setValue("imageAlt", image.alt || data.imageAlt);
+      syncImagePreview();
       setValue("body", profile.body.trim());
       setTokens("openQuestions", Array.isArray(data.openQuestions) ? data.openQuestions : []);
       els.frontmatter.value = profile.frontmatter;
@@ -629,6 +919,9 @@ export const editorPage = String.raw`<!doctype html>
       (data.importantWorks || []).forEach(rowWork);
       (data.storySeeds || []).forEach(rowStorySeed);
       (data.references || []).forEach(rowReference);
+      if (!(data.references || []).length && profile.kind === "draft") {
+        rowReference({ title: defaultSourceCredit, url: defaultInstagramUrl, type: "reference", status: "needs-source", supports: ["background"] });
+      }
       (data.relatedConnections || []).forEach(rowRelated);
       els.proposal.textContent = "No proposal yet.";
       renderReadiness();
@@ -653,28 +946,41 @@ export const editorPage = String.raw`<!doctype html>
 
     const renderProfiles = () => {
       const query = els.filter.value.trim().toLowerCase();
+      const kindFilter = els.profileKindFilter.value;
+      const total = state.profiles.length;
+      const draftCount = state.profiles.filter((profile) => profile.kind === "draft").length;
+      const publishedCount = state.profiles.filter((profile) => profile.kind === "published").length;
+      let shown = 0;
       els.profiles.innerHTML = "";
       state.profiles
+        .filter((profile) => kindFilter === "all" || profile.kind === kindFilter)
         .filter((profile) => !query || profile.name.toLowerCase().includes(query) || profile.id.includes(query))
         .forEach((profile) => {
+          shown += 1;
           const button = document.createElement("button");
-          button.className = "profile";
+          const active = state.loaded && state.loaded.kind === profile.kind && state.loaded.id === profile.id;
+          button.className = "profile" + (active ? " active" : "");
           button.innerHTML = "<strong>" + escapeHtml(profile.name) + "</strong><small>" + profile.kind + " / " + profile.id + "</small>";
           button.addEventListener("click", () => loadProfile(profile.kind, profile.id));
           els.profiles.append(button);
         });
+      els.profileCounts.textContent = shown + " shown / " + total + " total (" + draftCount + " draft, " + publishedCount + " published)";
     };
     const refreshSuggestions = () => {
       const jobs = [];
       const tags = [];
       const themes = [];
+      const eras = [];
+      const nationalities = [];
       const threads = [];
       const supports = [...allowed.supports];
       const reasons = [...allowed.reasons];
       state.profiles.forEach((profile) => {
         (profile.occupations || []).forEach((value) => jobs.push(value));
+        (profile.nationalities || []).forEach((value) => nationalities.push(value));
         (profile.tags || []).forEach((value) => tags.push(value));
         (profile.themes || []).forEach((value) => themes.push(value));
+        (profile.eras || csv(profile.era || "")).forEach((value) => eras.push(value));
         (profile.contextThreads || []).forEach((value) => threads.push(value));
         (profile.referenceSupports || []).forEach((value) => supports.push(value));
         (profile.relatedReasons || []).forEach((value) => reasons.push(value));
@@ -682,20 +988,31 @@ export const editorPage = String.raw`<!doctype html>
       datalistOptions("jobSuggestions", jobs);
       datalistOptions("tagSuggestions", tags);
       datalistOptions("themeSuggestions", themes);
+      datalistOptions("eraSuggestions", eras);
+      datalistOptions("nationalitySuggestions", nationalities);
       datalistOptions("threadSuggestions", threads);
       datalistOptions("personSuggestions", state.profiles.map((profile) => profile.id));
       datalistOptions("supportSuggestions", supports);
       datalistOptions("reasonSuggestions", reasons);
     };
-    const refresh = async () => { state.profiles = await api("/api/profiles"); refreshSuggestions(); renderProfiles(); };
+    const refresh = async () => {
+      setStatus("Refreshing profile list...");
+      state.profiles = await api("/api/profiles");
+      refreshSuggestions();
+      renderProfiles();
+      setStatus("Profile list refreshed with " + state.profiles.length + " profiles.");
+    };
     const loadProfile = async (kind, id) => {
       const profile = await api("/api/profile?kind=" + encodeURIComponent(kind) + "&id=" + encodeURIComponent(id));
       state.loaded = profile;
       fillForm(profile);
+      renderProfiles();
       setStatus(kind === "published" ? "Published profile loaded. Saving creates or updates a draft copy." : "Draft loaded.");
     };
 
+    els.editorTheme.addEventListener("change", () => applyEditorTheme(els.editorTheme.value));
     els.refresh.addEventListener("click", refresh);
+    els.profileKindFilter.addEventListener("change", renderProfiles);
     els.filter.addEventListener("input", renderProfiles);
     els.addPlace.addEventListener("click", () => rowPlace());
     els.addEvent.addEventListener("click", () => rowEvent());
@@ -703,6 +1020,7 @@ export const editorPage = String.raw`<!doctype html>
     els.addStorySeed.addEventListener("click", () => rowStorySeed());
     els.addReference.addEventListener("click", () => rowReference());
     els.addRelated.addEventListener("click", () => rowRelated());
+    els.suggestTaxonomy.addEventListener("click", suggestTaxonomy);
     document.querySelectorAll("[data-token-add]").forEach((button) => button.addEventListener("click", () => addToken(button.dataset.tokenAdd)));
     document.querySelectorAll("[data-token-input]").forEach((input) => input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
@@ -711,20 +1029,34 @@ export const editorPage = String.raw`<!doctype html>
       }
     }));
     document.querySelector(".editor").addEventListener("input", (event) => {
+      if (event.target.id === "slug") state.slugTouched = true;
+      if (event.target.id === "name") syncSlugFromName();
+      if (event.target.id === "imageSrc" || event.target.id === "imageAlt") syncImagePreview();
       if (event.target.id !== "frontmatter" && event.target.id !== "proposal") buildFrontmatter();
       if (event.target.id === "frontmatter") renderReadiness();
     });
     els.newDraft.addEventListener("click", () => {
       state.loaded = null;
+      state.slugTouched = false;
       clearRepeaters();
-      ["slug", "kind", "name", "summary", "lifespan", "birthYear", "deathYear", "nationality", "era", "originalInstagramUrl", "sourceCredit", "imageAlt", "body"].forEach((id) => setValue(id, ""));
-      ["occupations", "themes", "tags", "openQuestions"].forEach((id) => setTokens(id, []));
+      ["slug", "kind", "name", "summary", "lifespan", "birthYear", "deathYear", "imageAlt", "body"].forEach((id) => setValue(id, ""));
+      ["nationalities", "eras", "occupations", "themes", "tags", "openQuestions"].forEach((id) => setTokens(id, []));
+      setValue("originalInstagramUrl", defaultInstagramUrl);
+      setValue("sourceCredit", defaultSourceCredit);
       setValue("dateStatus", "needs-source");
       setValue("sourceCoverageStatus", "needs-source");
       setValue("sourceStrength", "needs-review");
-      setValue("imageSrc", "/images/historical-babes.gif");
+      setValue("imageSrc", defaultProfileImage);
+      setValue("imageAlt", "Historical Babes placeholder portrait");
+      syncImagePreview();
+      rowReference({ title: defaultSourceCredit, url: defaultInstagramUrl, type: "reference", status: "needs-source", supports: ["background"] });
       buildFrontmatter();
       setStatus("New draft form ready.");
+    });
+    els.resetForm.addEventListener("click", () => {
+      state.loaded = null;
+      els.newDraft.click();
+      setStatus("Form reset. Nothing was saved.");
     });
     els.copy.addEventListener("click", () => {
       if (!state.loaded || state.loaded.kind !== "published") return setStatus("Load a published profile before creating a draft copy.");
@@ -736,8 +1068,13 @@ export const editorPage = String.raw`<!doctype html>
       const slug = slugify(getValue("slug") || getValue("name"));
       if (!slug) return setStatus("A draft slug or name is required.");
       setValue("slug", slug);
+      setStatus("Saving draft " + slug + "...");
       api("/api/save", { method: "POST", body: JSON.stringify({ id: slug, frontmatter: buildFrontmatter(), body: getValue("body") }) })
-        .then((result) => refresh().then(() => loadProfile("draft", result.id)))
+        .then((result) => {
+          els.profileKindFilter.value = "draft";
+          els.filter.value = "";
+          return refresh().then(() => loadProfile("draft", result.id)).then(() => setStatus("Saved draft " + result.id + ". It is now visible in Drafts only."));
+        })
         .catch((error) => setStatus(error.message));
     });
     els.promote.addEventListener("click", () => {
@@ -777,7 +1114,7 @@ export const editorPage = String.raw`<!doctype html>
         birthYear: getValue("birthYear"),
         deathYear: getValue("deathYear"),
         lifespan: getValue("lifespan"),
-        era: getValue("era"),
+        eras: readTokens("eras"),
         occupations: readTokens("occupations"),
         tags: readTokens("tags"),
         themes: readTokens("themes"),
@@ -790,6 +1127,11 @@ export const editorPage = String.raw`<!doctype html>
         .then((proposal) => { els.proposal.textContent = JSON.stringify(proposal, null, 2); setStatus("Proposal generated as needs-review."); })
         .catch((error) => setStatus(error.message));
     });
+    els.sourceSearches.addEventListener("click", openSourceSearches);
+    els.openSite.addEventListener("click", () => {
+      const slug = slugify(getValue("slug") || getValue("name"));
+      window.open(slug ? "http://127.0.0.1:4321/" + slug + "/" : "http://127.0.0.1:4321/", "_blank");
+    });
     els.uploadImage.addEventListener("click", async () => {
       const file = els.imageUpload.files[0];
       if (!file) return setStatus("Choose an image file first.");
@@ -798,6 +1140,7 @@ export const editorPage = String.raw`<!doctype html>
         try {
           const result = await api("/api/upload-image", { method: "POST", body: JSON.stringify({ name: file.name, dataUrl: reader.result }) });
           setValue("imageSrc", result.src);
+          syncImagePreview();
           buildFrontmatter();
           setStatus("Uploaded image to " + result.src);
         } catch (error) {
@@ -819,6 +1162,33 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === "GET" && url.pathname === "/") {
       send(response, 200, editorPage);
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname.startsWith("/images/")) {
+      const relativeImagePath = decodeURIComponent(url.pathname.replace(/^\/images\//, ""));
+      const file = path.resolve(publicImagesDir, relativeImagePath);
+      if (!file.startsWith(publicImagesDir + path.sep)) {
+        send(response, 403, { error: "Forbidden" });
+        return;
+      }
+      const ext = path.extname(file).toLowerCase();
+      const contentType = imageContentTypes[ext];
+      if (!contentType) {
+        send(response, 415, { error: "Unsupported image type" });
+        return;
+      }
+      try {
+        const asset = await readFile(file);
+        response.writeHead(200, {
+          "content-type": contentType,
+          "cache-control": "no-store",
+        });
+        response.end(asset);
+      } catch (error) {
+        if (error.code === "ENOENT") send(response, 404, { error: "Image not found" });
+        else throw error;
+      }
       return;
     }
 
@@ -926,6 +1296,12 @@ const server = http.createServer(async (request, response) => {
 export const checkEditorPageScript = (html = editorPage) => {
   const match = html.match(/<script>([\s\S]*?)<\/script>/);
   if (!match) throw new Error("Editor page does not include an inline browser script.");
+  if (!match[1].includes("const slugify =")) {
+    throw new Error("Editor browser script must define its own slugify helper for slug suggestions and saves.");
+  }
+  if (!match[1].includes('replace(/[^\\w\\s-]/g, "")') || !match[1].includes('replace(/[-\\s]+/g, "-")')) {
+    throw new Error("Editor browser slugify helper must preserve letters and collapse whitespace into dashes.");
+  }
   new vm.Script(match[1], { filename: "local-people-editor.inline.js" });
   return true;
 };

@@ -92,6 +92,7 @@ try {
       birthYear: options.birthYear,
       deathYear: options.deathYear,
       nationality: options.nationality,
+      nationalities: options.nationalities,
       era: options.era,
       sourceCredit: options.sourceCredit,
       originalInstagramUrl: options.originalInstagramUrl,

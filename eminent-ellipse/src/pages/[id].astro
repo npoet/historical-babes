@@ -15,6 +15,7 @@ import {
   getFigureSourceStrengthLabel,
   getGroupedReferences,
   getOccupations,
+  getProfileImage,
   getRelatedFigures,
   getResearchTrailLinks,
   getStatusLabel,
@@ -63,6 +64,7 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
 );
 const referenceGroups = getGroupedReferences(figure);
 const researchTrailLinks = getResearchTrailLinks(figure);
+const profileImage = getProfileImage(figure);
 const sourceStrength = getFigureSourceStrength(figure);
 const sourceStrengthLabel = getFigureSourceStrengthLabel(figure);
 const whatThisMeans =
@@ -96,7 +98,7 @@ const reasonLabel = (reason: string) =>
 <BaseLayout
   title={figure.data.name}
   description={description}
-  image={figure.data.image.src}
+  image={profileImage.src}
   canonicalPath={`/${figure.id}`}
   type="article"
 >
@@ -108,8 +110,8 @@ const reasonLabel = (reason: string) =>
     <div class="content-wrap">
       <img
         class="image fade-in"
-        src={figure.data.image.src}
-        alt={figure.data.image.alt}
+        src={profileImage.src}
+        alt={profileImage.alt}
       />
 
       <div class="content">

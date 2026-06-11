@@ -4,6 +4,7 @@ import path from "node:path";
 export const projectRoot = path.resolve(new URL("..", import.meta.url).pathname);
 export const figuresDir = path.join(projectRoot, "src/content/figures");
 export const draftsDir = path.join(projectRoot, "src/content/drafts/figures");
+export const defaultProfileImage = "/images/profile-placeholder.svg";
 
 const allowedSourceTypes = new Set([
   "primary",
@@ -146,9 +147,9 @@ const parseInlineEntry = (value) => {
 
 const parseIndentedBlock = (lines, startIndex) => {
   const first = lines[startIndex + 1];
-  if (!first || !/^\s+/.test(first)) return { value: undefined, endIndex: startIndex };
+  if (!first || (!/^\s+/.test(first) && !/^-\s+/.test(first))) return { value: undefined, endIndex: startIndex };
 
-  if (/^\s+-\s+/.test(first)) {
+  if (/^\s*-\s+/.test(first)) {
     const items = [];
     let index = startIndex + 1;
     let current = null;
@@ -156,9 +157,9 @@ const parseIndentedBlock = (lines, startIndex) => {
 
     for (; index < lines.length; index += 1) {
       const line = lines[index];
-      if (!/^\s+/.test(line)) break;
+      if (!/^\s+/.test(line) && !/^-\s+/.test(line)) break;
 
-      const item = line.match(/^\s+-\s+(.*)$/);
+      const item = line.match(/^\s*-\s+(.*)$/);
       if (item) {
         const parsed = parseInlineEntry(item[1]);
         if (current && pendingArrayKey && typeof parsed === "string") {
@@ -173,7 +174,7 @@ const parseIndentedBlock = (lines, startIndex) => {
 
       if (!current || typeof current !== "object") continue;
 
-      const pair = line.match(/^\s{4}([A-Za-z][A-Za-z0-9]*):\s*(.*)$/);
+      const pair = line.match(/^\s+([A-Za-z][A-Za-z0-9]*):\s*(.*)$/);
       if (pair) {
         pendingArrayKey = null;
         const [, key, rawValue] = pair;
@@ -218,7 +219,7 @@ export const parseFrontmatterSummary = (frontmatter) => {
       continue;
     }
 
-    if (lines[index + 1]?.match(/^\s+/)) {
+    if (lines[index + 1]?.match(/^\s+|^-\s+/)) {
       const parsed = parseIndentedBlock(lines, index);
       data[key] = parsed.value;
       index = parsed.endIndex;
@@ -262,8 +263,10 @@ export const listProfiles = async () => {
         name: data.name || profile.id,
         summary: data.summary || "",
         occupations: data.occupations || normalizeList(data.occupation),
+        nationalities: data.nationalities || normalizeList(data.nationality),
         tags: data.tags || [],
         themes: data.themes || [],
+        eras: data.eras || normalizeList(data.era),
         era: data.era || "",
         places: (data.places || []).map((place) => place.name).filter(Boolean),
         contextThreads: (data.contextEvents || []).map((event) => event.thread).filter(Boolean),
@@ -457,8 +460,10 @@ export const buildDraftSource = (input = {}) => {
   const name = input.name?.trim() || "Untitled Draft";
   const summary = input.summary?.trim() || "Draft profile awaiting human review.";
   const occupations = normalizeList(input.occupations ?? input.occupation);
+  const nationalities = normalizeList(input.nationalities ?? input.nationality);
   const tags = normalizeList(input.tags);
   const themes = normalizeList(input.themes);
+  const eras = normalizeList(input.eras ?? input.era);
   const openQuestions = normalizeOpenQuestions(input.openQuestions);
   const references = normalizeReferences(input.references);
   const contextEvents = normalizeContextEvents(input.contextEvents);
@@ -475,7 +480,7 @@ export const buildDraftSource = (input = {}) => {
       "- Mark generated or proposed enrichment as reviewed only after manual acceptance.",
       "- Replace placeholder image and alt text when a reliable image source is available.",
     ].join("\n");
-  const imageSrc = input.image?.src?.trim() || input.imageSrc?.trim() || "/images/historical-babes.gif";
+  const imageSrc = input.image?.src?.trim() || input.imageSrc?.trim() || defaultProfileImage;
   const imageAlt =
     input.image?.alt?.trim() || input.imageAlt?.trim() || `Draft placeholder image for ${name}`;
 
@@ -491,14 +496,24 @@ export const buildDraftSource = (input = {}) => {
   if (isPresent(input.birthYear)) lines.push(`birthYear: ${yamlNumber(input.birthYear)}`);
   if (isPresent(input.deathYear)) lines.push(`deathYear: ${yamlNumber(input.deathYear)}`);
   lines.push(`dateStatus: ${statusValues.has(input.dateStatus) ? input.dateStatus : "needs-source"}`);
-  if (isPresent(input.nationality)) lines.push(`nationality: ${yamlString(input.nationality)}`);
+  if (nationalities.length) {
+    pushList(lines, "nationalities", nationalities);
+    lines.push(`nationality: ${yamlString(nationalities.join(", "))}`);
+  } else if (isPresent(input.nationality)) {
+    lines.push(`nationality: ${yamlString(input.nationality)}`);
+  }
   if (occupations.length) {
     pushList(lines, "occupations", occupations);
     lines.push(`occupation: ${yamlString(occupations.join(", "))}`);
   } else if (isPresent(input.occupation)) {
     lines.push(`occupation: ${yamlString(input.occupation)}`);
   }
-  if (isPresent(input.era)) lines.push(`era: ${yamlString(input.era)}`);
+  if (eras.length) {
+    pushList(lines, "eras", eras);
+    lines.push(`era: ${yamlString(eras.join(", "))}`);
+  } else if (isPresent(input.era)) {
+    lines.push(`era: ${yamlString(input.era)}`);
+  }
   pushList(lines, "tags", tags);
   pushList(lines, "themes", themes);
   lines.push(`sourceCredit: ${yamlString(sourceCredit)}`);
@@ -757,7 +772,7 @@ export const proposeEnrichment = (input = {}) => {
     input.sourceNote?.trim() ||
     "Prefer museums, archives, libraries, universities, primary-source collections, books/articles, authority records, and reputable reference sources.";
   const relatedPeople = likelyRelatedPeople(input);
-  const occupationLabel = normalizeList(input.occupations ?? input.occupation)[0] || "work";
+  const occupationLabel = normalizeList(input.occupations ?? input.occupation).join(", ") || "work";
   const mainTheme = normalizeList(input.themes)[0] || normalizeList(input.tags)[0] || "historical context";
   const primaryThread = threadNames(input.contextEvents)[0] || `${mainTheme} across time`;
   const firstPlace = placeNames(input.places)[0] || "the places connected to this profile";
@@ -782,7 +797,7 @@ export const proposeEnrichment = (input = {}) => {
       {
         field: "works and impact",
         status: "needs-source",
-        prompt: `Identify primary, museum, archive, book, or article support for ${name}'s major ${occupationLabel} claims.`,
+        prompt: `Identify primary, museum, archive, book, or article support for ${name}'s roles, work, and impact${occupationLabel === "work" ? "" : ` as ${occupationLabel}`}.`,
       },
     ],
     factConfidenceIssues: [
@@ -824,7 +839,7 @@ export const proposeEnrichment = (input = {}) => {
     storyPrompts: [
       {
         title: `${name} and ${mainTheme}`,
-        prompt: `Trace one sourced episode where ${name}'s ${occupationLabel} intersected with ${mainTheme}.`,
+        prompt: `Trace one sourced episode where ${name}'s work${occupationLabel === "work" ? "" : ` as ${occupationLabel}`} intersected with ${mainTheme}.`,
         status: "needs-source",
       },
     ],

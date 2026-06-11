@@ -486,7 +486,7 @@ for (const file of draftFiles) {
     findings.push(`${label}: imported draft is not marked as unreviewed`);
   }
 
-  findings.push(`${label}: unreviewed imported draft`);
+  warnings.push(`${label}: saved local draft is unreviewed and excluded from published content`);
 }
 
 runEditorHealthCheck();
