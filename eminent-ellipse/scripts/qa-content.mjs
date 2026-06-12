@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { editorPage, checkEditorPageScript } from "./local-people-editor.mjs";
 import {
   cleanupDraft,
@@ -13,7 +14,9 @@ import {
   readProfile,
 } from "./people-content.mjs";
 
-const root = new URL("..", import.meta.url).pathname;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const root = path.resolve(__dirname, "..");
 const figuresDir = path.join(root, "src/content/figures");
 const draftsDir = path.join(root, "src/content/drafts/figures");
 
