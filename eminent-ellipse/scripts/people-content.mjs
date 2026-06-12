@@ -1,10 +1,30 @@
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-export const projectRoot = path.resolve(new URL("..", import.meta.url).pathname);
-export const figuresDir = path.join(projectRoot, "src/content/figures");
-export const draftsDir = path.join(projectRoot, "src/content/drafts/figures");
-export const defaultProfileImage = "/images/profile-placeholder.svg";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export const projectRoot = path.resolve(__dirname, "..");
+
+export const figuresDir = path.join(
+  projectRoot,
+  "src",
+  "content",
+  "figures"
+);
+
+export const draftsDir = path.join(
+  projectRoot,
+  "src",
+  "content",
+  "drafts",
+  "figures"
+);
+
+export const defaultProfileImage =
+  "/images/profile-placeholder.svg";
+
 
 const allowedSourceTypes = new Set([
   "primary",
