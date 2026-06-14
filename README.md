@@ -58,9 +58,3 @@ Run:
 npm run qa:content
 npm run build
 ```
-
-Never commit `.spark/`, `changes/`, private change-request files, workflow files, or private notes. Confirm with:
-
-```sh
-git ls-files changes .spark
-```
