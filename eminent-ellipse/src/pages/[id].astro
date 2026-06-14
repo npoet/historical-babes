@@ -15,6 +15,7 @@ import {
   getFigureSourceStrengthLabel,
   getGroupedReferences,
   getOccupations,
+  getProfileImage,
   getRelatedFigures,
   getResearchTrailLinks,
   getStatusLabel,
@@ -63,6 +64,7 @@ const importantWorks = figure.data.importantWorks?.map((work) =>
 );
 const referenceGroups = getGroupedReferences(figure);
 const researchTrailLinks = getResearchTrailLinks(figure);
+const profileImage = getProfileImage(figure);
 const sourceStrength = getFigureSourceStrength(figure);
 const sourceStrengthLabel = getFigureSourceStrengthLabel(figure);
 const whatThisMeans =
@@ -89,12 +91,14 @@ const reasonLabels = {
   "shared context event": "Shared event",
   "historical thread": "Historical thread",
 };
+const reasonLabel = (reason: string) =>
+  reasonLabels[reason as keyof typeof reasonLabels] ?? reason;
 ---
 
 <BaseLayout
   title={figure.data.name}
   description={description}
-  image={figure.data.image.src}
+  image={profileImage.src}
   canonicalPath={`/${figure.id}`}
   type="article"
 >
@@ -106,8 +110,8 @@ const reasonLabels = {
     <div class="content-wrap">
       <img
         class="image fade-in"
-        src={figure.data.image.src}
-        alt={figure.data.image.alt}
+        src={profileImage.src}
+        alt={profileImage.alt}
       />
 
       <div class="content">
@@ -390,9 +394,9 @@ const reasonLabels = {
                   <a href={`/${related.figure.id}`}>{related.figure.data.name}</a>
                   {related.figure.data.lifespan && <span>{related.figure.data.lifespan}</span>}
                   <div class="reason-list">
-                    {related.reasons.map((reason) => <span class="reason-badge">{reasonLabels[reason]}</span>)}
+                    {related.reasons.map((reason) => <span class="reason-badge">{reasonLabel(reason)}</span>)}
                   </div>
-                  <p>{related.note ?? `${related.figure.data.name} has a ${related.reasons[0] ? reasonLabels[related.reasons[0]].toLowerCase() : "related archive"} connection with ${figure.data.name}.`}</p>
+                  <p>{related.note ?? `${related.figure.data.name} has a ${related.reasons[0] ? reasonLabel(related.reasons[0]).toLowerCase() : "related archive"} connection with ${figure.data.name}.`}</p>
                   <div class="connection-links">
                     <a href={`/${related.figure.id}`}>Profile</a>
                     <a href={`/map#${related.figure.id}`}>Map focus</a>
