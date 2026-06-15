@@ -1,7 +1,9 @@
 {
   "scripts": {
     "build": "npm --prefix eminent-ellipse run build",
-    "qa:content": "npm --prefix eminent-ellipse run qa:content"
+    "qa:content": "npm --prefix eminent-ellipse run qa:content",
+    "people": "npm --prefix eminent-ellipse run people --",
+    "people:editor": "npm --prefix eminent-ellipse run people:editor"
   },
   "dependencies": {
     "@astrojs/mdx": "^6.0.2"

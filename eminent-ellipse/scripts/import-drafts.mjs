@@ -1,5 +1,6 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { createDraft, draftsDir, projectRoot, slugify } from "./people-content.mjs";
 
 const inputFlag = process.argv.findIndex((arg) => arg === "--input");
 const inputPath = inputFlag >= 0 ? process.argv[inputFlag + 1] : undefined;
@@ -17,20 +18,6 @@ if (!inputPath) {
   );
   process.exit(1);
 }
-
-const outputDir = new URL("../src/content/drafts/figures/", import.meta.url);
-await mkdir(outputDir, { recursive: true });
-
-const slugify = (value) =>
-  value
-    .toString()
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[-\s]+/g, "-");
-
-const yamlString = (value) => JSON.stringify(value ?? "");
 
 const getExtension = (filePath) => path.extname(filePath).toLowerCase();
 
@@ -166,22 +153,6 @@ for (const [index, rawRecord] of records.entries()) {
     record.sourcePath ? `Source path: ${record.sourcePath}` : undefined,
   ].filter(Boolean);
 
-  const frontmatter = [
-    "---",
-    `name: ${yamlString(record.name)}`,
-    "draft: true",
-    "reviewed: false",
-    summary ? `summary: ${yamlString(summary.slice(0, 240))}` : undefined,
-    `sourceCredit: ${yamlString(record.sourceCredit)}`,
-    record.sourceUrl ? `originalInstagramUrl: ${yamlString(record.sourceUrl)}` : undefined,
-    "image:",
-    "  src: /images/historical-babes.gif",
-    `  alt: ${yamlString(`Draft placeholder image for ${record.name}`)}`,
-    record.tags.length ? "tags:" : undefined,
-    ...record.tags.map((tag) => `  - ${yamlString(tag)}`),
-    "---",
-  ].filter(Boolean);
-
   const body = [
     summary || "Imported draft awaiting human review.",
     "",
@@ -196,11 +167,20 @@ for (const [index, rawRecord] of records.entries()) {
     .filter((line) => line !== undefined)
     .join("\n");
 
-  await writeFile(
-    path.join(outputDir.pathname, `${slug}.mdx`),
-    `${frontmatter.join("\n")}\n\n${body}\n`,
-    "utf8",
-  );
+  await createDraft({
+    name: record.name,
+    slug,
+    summary: summary ? summary.slice(0, 240) : undefined,
+    sourceCredit: record.sourceCredit,
+    originalInstagramUrl: record.sourceUrl,
+    tags: record.tags,
+    openQuestions: [
+      "Which dates, places, and occupation labels can be verified from reliable public sources?",
+      "Which imported details should remain private notes rather than public profile claims?",
+    ],
+    body,
+    overwrite: true,
+  });
 }
 
-console.log(`Created ${records.length} draft file(s) in src/content/drafts/figures.`);
+console.log(`Created ${records.length} draft file(s) in ${path.relative(projectRoot, draftsDir)}.`);

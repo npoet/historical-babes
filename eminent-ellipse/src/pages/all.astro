@@ -8,6 +8,7 @@ import {
   contextLayerShortLabels,
   getContextLayer,
   getOccupations,
+  getProfileImage,
   getReferenceTypeData,
   getSearchBucketData,
   getSearchText,
@@ -285,8 +286,8 @@ const missingCoordinateItems = [
       >
         <div class="figure-image">
           <img
-            src={figure.data.image.src}
-            alt={figure.data.image.alt}
+            src={getProfileImage(figure).src}
+            alt={getProfileImage(figure).alt}
             loading="lazy"
           />
         </div>

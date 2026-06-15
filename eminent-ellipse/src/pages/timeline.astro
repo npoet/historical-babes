@@ -149,7 +149,7 @@ const seedRows = figures.flatMap((figure) =>
       note: seed.note ?? "",
       type: "story",
       href: `/${figure.id}`,
-      source: seed.source,
+      source: seed.source ?? "",
       thread: seed.title,
       importance: "major",
       scope: "person",

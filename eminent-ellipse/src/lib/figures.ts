@@ -12,19 +12,22 @@ export type SourceType =
   | "authority";
 export type SourceStrength = "strong" | "partial" | "needs-review";
 export type ContextLayer = "personal" | "impact" | "world";
-export type ConnectionReason =
-  | "shared theme"
-  | "similar work"
-  | "same era"
-  | "connected place"
-  | "shared context event"
-  | "historical thread";
+export type ConnectionReason = string;
 
 export type RelatedFigure = {
   figure: FigureEntry;
   reasons: ConnectionReason[];
   note?: string;
 };
+
+export const profileImagePlaceholder = "/images/profile-placeholder.svg";
+
+export const getProfileImage = (figure: FigureEntry) => ({
+  src: figure.data.image?.src || profileImagePlaceholder,
+  alt:
+    figure.data.image?.alt ||
+    `Historical Babes placeholder portrait for ${figure.data.name}`,
+});
 
 export const contextLayerLabels: Record<ContextLayer, string> = {
   personal: "Life + places",
@@ -166,6 +169,7 @@ export const getSearchText = (figure: FigureEntry) =>
     figure.data.occupation,
     figure.data.era,
     figure.data.sourceCredit,
+    ...(figure.data.nationalities ?? []),
     ...(figure.data.occupations ?? []),
     ...(figure.data.tags ?? []),
     ...(figure.data.themes ?? []),

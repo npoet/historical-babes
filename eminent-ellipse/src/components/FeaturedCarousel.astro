@@ -1,5 +1,6 @@
 ---
 import type { CollectionEntry } from "astro:content";
+import { getProfileImage } from "../lib/figures";
 
 interface Props {
   figures: CollectionEntry<"figures">[];
@@ -16,8 +17,8 @@ const { figures } = Astro.props;
     >
       <div class="featured-image">
         <img
-          src={figure.data.image.src}
-          alt={figure.data.image.alt}
+          src={getProfileImage(figure).src}
+          alt={getProfileImage(figure).alt}
           loading="lazy"
         />
       </div>
