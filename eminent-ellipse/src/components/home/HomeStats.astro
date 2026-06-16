@@ -1,0 +1,63 @@
+---
+interface StatLink {
+  href: string;
+  number: string | number;
+  label: string;
+}
+
+interface Props {
+  stats: StatLink[];
+}
+
+const { stats } = Astro.props;
+---
+
+<section class="homepage-section stats-section">
+  {
+    stats.map((stat) => (
+      <div class="stat">
+        <a href={stat.href} class="stat-link">
+          <span class="stat-number">{stat.number}</span>
+          <span class="stat-label">{stat.label}</span>
+        </a>
+      </div>
+    ))
+  }
+</section>
+
+<style>
+  .stats-section {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    padding: 3rem 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-link {
+    display: block;
+    color: inherit;
+  }
+
+  .stat-number {
+    display: block;
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 700;
+    color: var(--color-pink);
+  }
+
+  .stat-label {
+    color: var(--color-text-alt);
+  }
+
+  @media (max-width: 768px) {
+    .stats-section {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

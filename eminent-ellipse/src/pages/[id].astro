@@ -377,10 +377,11 @@ const firstNames = nameParts.join(" ");
 
         <section class="creator-cta">
           <h3>Follow The Archive</h3>
-          <p>More finds and process notes from {siteConfig.creator.name}.</p>
+          <p>More finds from the archive, plus process notes from {siteConfig.creator.name}.</p>
 
           <div class="cta-links">
-            <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
+            <a href={siteConfig.archive.instagramUrl} target="_blank" rel="noopener noreferrer">Archive Instagram</a>
+            <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Amelia Instagram</a>
             <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
             <a href={`mailto:?subject=${encodeURIComponent(`Historical Babes: ${figure.data.name}`)}&body=${encodeURIComponent(`${siteConfig.url}/${figure.id}`)}`}>Share</a>
           </div>

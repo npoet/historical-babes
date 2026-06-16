@@ -1,0 +1,27 @@
+---
+interface Props {
+  eyebrow?: string;
+  title: string;
+  count?: string | number;
+  linkHref?: string;
+  linkLabel?: string;
+  id?: string;
+}
+
+const { eyebrow, title, count, linkHref, linkLabel, id } = Astro.props;
+const hasContent = Astro.slots.has("default");
+---
+
+<div class="section-heading">
+  <div>
+    {eyebrow && <span class="beta-label">{eyebrow}</span>}
+    <h3 id={id}>{hasContent ? <slot /> : title}</h3>
+  </div>
+  {
+    linkHref && linkLabel ? (
+      <a href={linkHref}>{linkLabel}</a>
+    ) : (
+      count !== undefined && <span>{count}</span>
+    )
+  }
+</div>

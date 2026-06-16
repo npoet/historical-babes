@@ -4,6 +4,9 @@ export const siteConfig = {
   description:
     "A playful, research-minded archive of influential women from across centuries, cultures, sciences, arts, politics, and public life.",
   url: "https://historicalbabes.org",
+  archive: {
+    instagramUrl: "https://www.instagram.com/historicalbabesorg",
+  },
   creator: {
     name: "Amelia Poet",
     instagramUrl: "https://www.instagram.com/ameliap0et",

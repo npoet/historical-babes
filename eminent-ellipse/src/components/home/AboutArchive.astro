@@ -1,0 +1,44 @@
+---
+interface Props {
+  compact?: boolean;
+}
+
+const { compact = false } = Astro.props;
+---
+
+<section class="homepage-section about-section">
+  {
+    compact ? (
+      <>
+        <p>
+          Historical Babes Archive is a growing collection of biographies, references, and historical resources focused on influential women throughout history.
+        </p>
+        <p>
+          From ancient rulers and philosophers to modern scientists, artists, and civil rights leaders, the archive highlights individuals whose actions and ideas continue to shape our world.
+        </p>
+      </>
+    ) : (
+      <>
+        <h3>About The Archive</h3>
+        <p>
+          Historical Babes is dedicated to telling the stories of extraordinary women throughout history.
+          From renowned pioneers to forgotten trailblazers, we explore the lives and legacies of women whose contributions have left a lasting mark on society, the sciences, the arts, and beyond.
+        </p>
+        <p>
+          By highlighting both overlooked figures and lesser-known facets of familiar icons, we strive to deepen our understanding of the women whose achievements, resilience, and influence helped shape the world we know today.
+        </p>
+      </>
+    )
+  }
+</section>
+
+<style>
+  .about-section {
+    max-width: 850px;
+  }
+
+  .about-section p {
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+  }
+</style>

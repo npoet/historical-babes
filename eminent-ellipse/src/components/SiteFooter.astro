@@ -34,10 +34,10 @@ import { siteConfig } from "../site.config";
         © 2026 {siteConfig.creator.name}
       </div>
       <a
-        href={siteConfig.creator.instagramUrl}
+        href={siteConfig.archive.instagramUrl}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Instagram"
+        aria-label="Historical Babes Archive Instagram"
         class="social-link"
       >
         <svg
@@ -71,6 +71,16 @@ import { siteConfig } from "../site.config";
             fill="currentColor"
           />
         </svg>
+      </a>
+
+      <a
+        href={siteConfig.creator.instagramUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${siteConfig.creator.name} Instagram`}
+        class="social-link"
+      >
+        Amelia IG
       </a>
 
       <a

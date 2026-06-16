@@ -3,15 +3,12 @@ import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import SiteHeader from "../components/SiteHeader.astro"
 import SiteFooter from "../components/SiteFooter.astro"
+import ArchiveHero from "../components/ArchiveHero.astro";
+import FigureCard from "../components/FigureCard.astro";
 import { siteConfig } from "../site.config";
 import {
-  contextLayerShortLabels,
   getContextLayer,
   getOccupations,
-  getProfileImage,
-  getReferenceTypeData,
-  getSearchBucketData,
-  getSearchText,
   getStartYear,
   reliabilityCopy,
   sourceFilterOptions,
@@ -172,15 +169,11 @@ const missingCoordinateItems = [
   canonicalPath="/all"
 >
  <SiteHeader />
-  <section class="archive-hero">
-    <div>
-      <span class="beta-label">Archive beta</span>
-      <p>
-        Search names, places, eras, occupations, themes, and notes across the growing Historical Babes collection.
-      </p>
-      <p class="reliability-note">{reliabilityCopy}</p>
-    </div>
-  </section>
+  <ArchiveHero
+    label="Archive beta"
+    copy="Search names, places, eras, occupations, themes, and notes across the growing Historical Babes collection."
+    reliabilityCopy={reliabilityCopy}
+  />
 
   <section class="search-section">
       <div class="search-row">
@@ -273,37 +266,7 @@ const missingCoordinateItems = [
 </div>
   </section>
   <section id="figure-grid" class="figure-grid">
-    {figures.map((figure) => (
-      <a
-        href={`/${figure.id}`}
-        class="figure-card"
-        data-search={getSearchText(figure)}
-        data-search-buckets={getSearchBucketData(figure)}
-        data-era={figure.data.era ?? ""}
-        data-occupations={getOccupations(figure).join("|")}
-        data-themes={(figure.data.themes ?? []).join("|")}
-        data-sources={getReferenceTypeData(figure)}
-      >
-        <div class="figure-image">
-          <img
-            src={getProfileImage(figure).src}
-            alt={getProfileImage(figure).alt}
-            loading="lazy"
-          />
-        </div>
-
-        <div class="figure-info">
-          <h3>{figure.data.name}</h3>
-
-          {
-            figure.data.lifespan && (
-              <span>{figure.data.lifespan}</span>
-            )
-          }
-          <small class="match-hint" aria-live="polite"></small>
-        </div>
-      </a>
-    ))}
+    {figures.map((figure) => <FigureCard figure={figure} />)}
   </section>
   <div id="no-results" class="no-results hidden">
       <img
@@ -433,25 +396,6 @@ const missingCoordinateItems = [
         sourceFilter.value = button.dataset.chipSource || "";
       }
       applyFilters();
-    });
-  });
-
-  document.querySelectorAll<HTMLElement>(".share-card").forEach((share) => {
-    share.addEventListener("click", async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const card = share.closest<HTMLAnchorElement>(".figure-card");
-      const url = new URL(share.dataset.shareUrl || card?.getAttribute("href") || "/", window.location.origin);
-      const title = card?.querySelector("h3")?.textContent?.trim() || "Historical Babes";
-
-      if (navigator.share) {
-        await navigator.share({ title, url: url.toString() });
-        return;
-      }
-
-      await navigator.clipboard?.writeText(url.toString());
-      share.textContent = "Copied";
     });
   });
 

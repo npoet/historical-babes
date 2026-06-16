@@ -1,9 +1,14 @@
 ---
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro"
-import SiteFooter from "../components/SiteFooter.astro"
-import FeaturedCarousel from "../components/FeaturedCarousel.astro"
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import FeaturedCarousel from "../components/FeaturedCarousel.astro";
+import SectionHeading from "../components/SectionHeading.astro";
+import AboutArchive from "../components/home/AboutArchive.astro";
+import CreatorFollow from "../components/home/CreatorFollow.astro";
+import HomeHero from "../components/home/HomeHero.astro";
+import HomeStats from "../components/home/HomeStats.astro";
 import { siteConfig } from "../site.config";
 
 const figures = await getCollection("figures");
@@ -23,11 +28,23 @@ const featuredFigures = figures.filter((figure) =>
   featuredIds.includes(figure.id)
 );
 
-const stats = {
-  figures: figures.length,
-  years: "2000+",
-  continents: 5,
-};
+const statLinks = [
+  {
+    href: "/all",
+    number: figures.length,
+    label: "Figures",
+  },
+  {
+    href: "/map",
+    number: 5,
+    label: "Continents",
+  },
+  {
+    href: "/timeline",
+    number: "2000+",
+    label: "Years of History",
+  },
+];
 ---
 
 <BaseLayout
@@ -37,242 +54,20 @@ const stats = {
 >
   <SiteHeader />
 
-  <section class="landing-hero">
-    <div class="hero-copy">
-      <h2>
-        Women Who
-        <span class="hero-accent">Changed History</span>
-      </h2>
-
-      <p>
-        Explore the lives and legacies of influential women from across centuries and cultures.
-        Scientists, rulers, artists, activists, explorers, inventors, and visionaries who shaped our world.
-      </p>
-    </div>
-  </section>
+  <HomeHero />
 
   <section class="homepage-section">
-    <div class="section-heading">
-      <h3>Featured
-        <span class="hero-accent">Babes</span>
-      </h3>
-
-      <a href="/all">View all →</a>
-    </div>
+    <SectionHeading title="Featured Babes" linkHref="/all" linkLabel="View all →">
+      Featured <span class="hero-accent">Babes</span>
+    </SectionHeading>
 
     <FeaturedCarousel figures={featuredFigures} />
   </section>
 
-  <section class="homepage-section about-section">
-    <h3>About The Archive</h3>
-
-    <p>
-      Historical Babes is dedicated to telling the stories of extraordinary women throughout history.
-      From renowned pioneers to forgotten trailblazers, we explore the lives and legacies of women whose contributions have left a lasting mark on society, the sciences, the arts, and beyond.
-    </p>
-
-    <p>
-      By highlighting both overlooked figures and lesser-known facets of familiar icons, we strive to deepen our understanding of the women whose achievements, resilience, and influence helped shape the world we know today.
-    </p>
-  </section>
-
-  <section class="homepage-section stats-section">
-    <div class="stat">
-      <a href="/all" class="stat-link">
-        <span class="stat-number">
-          {stats.figures}
-        </span>
-
-        <span class="stat-label">
-          Figures
-        </span>
-      </a>
-    </div>
-
-    <div class="stat">
-      <a href="/map" class="stat-link">
-        <span class="stat-number">
-          {stats.continents}
-        </span>
-
-        <span class="stat-label">
-          Continents
-        </span>
-      </a>
-    </div>
-
-    <div class="stat">
-      <a href="/timeline" class="stat-link">
-        <span class="stat-number">
-          {stats.years}
-        </span>
-
-        <span class="stat-label">
-          Years of History
-        </span>
-      </a>
-    </div>
-  </section>
-
-  <section class="homepage-section about-section">
-    <p>
-     Historical Babes Archive is a growing collection of biographies, references, and historical resources focused on influential women throughout history.
-    </p>
-
-    <p>
-     From ancient rulers and philosophers to modern scientists, artists, and civil rights leaders, the archive highlights individuals whose actions and ideas continue to shape our world.
-    </p>
-  </section>
-
-  <section class="homepage-section creator-section">
-    <div>
-      <h3>Follow The Archive</h3>
-      <p>
-        Amelia shares new historical finds, behind-the-scenes research, and archive updates on her public profiles.
-      </p>
-    </div>
-
-    <div class="cta-links">
-      <a href={siteConfig.creator.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
-      <a href={siteConfig.creator.linkedInUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
-      {siteConfig.newsletterUrl && (
-        <a href={siteConfig.newsletterUrl} target="_blank" rel="noopener noreferrer">Newsletter</a>
-      )}
-      {siteConfig.supportUrl && (
-        <a href={siteConfig.supportUrl} target="_blank" rel="noopener noreferrer">Support</a>
-      )}
-    </div>
-  </section>
+  <AboutArchive />
+  <HomeStats stats={statLinks} />
+  <AboutArchive compact />
+  <CreatorFollow />
 
   <SiteFooter />
 </BaseLayout>
-
-<style>
-  .landing-hero {
-    padding: 2rem 0 4rem;
-  }
-
-  .hero-copy {
-    max-width: 900px;
-  }
-
-  .hero-copy h2 {
-    margin-bottom: 1.5rem;
-  }
-
-  .hero-copy p {
-    max-width: 700px;
-
-    line-height: 1.6;
-
-    color: var(--color-text-alt);
-
-    font-size: 1.1rem;
-  }
-
-  .homepage-section {
-    margin-bottom: 6rem;
-  }
-
-  .section-heading {
-    display: flex;
-
-    justify-content: space-between;
-    align-items: center;
-
-    margin-bottom: 1.5rem;
-  }
-
-  .featured-info strong {
-    display: block;
-
-    margin-bottom: 0.35rem;
-  }
-
-  .featured-info span {
-    color: var(--color-text-alt);
-
-    font-size: 0.85rem;
-  }
-
-  .about-section {
-    max-width: 850px;
-  }
-
-  .about-section p {
-    line-height: 1.7;
-    margin-bottom: 1.5rem;
-  }
-
-  .stats-section {
-    display: grid;
-
-    grid-template-columns: repeat(3, 1fr);
-
-    gap: 2rem;
-
-    padding: 3rem 0;
-
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .stat {
-    text-align: center;
-  }
-
-  .stat-link {
-    display: block;
-    color: inherit;
-  }
-
-  .stat-number {
-    display: block;
-
-    font-size: clamp(2rem, 5vw, 4rem);
-
-    font-weight: 700;
-
-    color: var(--color-pink);
-  }
-
-  .stat-label {
-    color: var(--color-text-alt);
-  }
-
-  .creator-section {
-    display: flex;
-    justify-content: space-between;
-    gap: 2rem;
-    align-items: center;
-
-    padding: 2rem 0;
-
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .creator-section p {
-    max-width: 620px;
-    margin: 0;
-    line-height: 1.6;
-    color: var(--color-text-alt);
-  }
-
-  @media (max-width: 768px) {
-    .stats-section {
-      grid-template-columns: 1fr;
-    }
-
-    .section-heading {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.5rem;
-    }
-
-    .creator-section {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-  }
-</style>

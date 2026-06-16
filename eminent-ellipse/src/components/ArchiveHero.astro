@@ -1,0 +1,17 @@
+---
+interface Props {
+  label: string;
+  copy: string;
+  reliabilityCopy?: string;
+}
+
+const { label, copy, reliabilityCopy } = Astro.props;
+---
+
+<section class="archive-hero">
+  <div>
+    <span class="beta-label">{label}</span>
+    <p>{copy}</p>
+    {reliabilityCopy && <p class="reliability-note">{reliabilityCopy}</p>}
+  </div>
+</section>

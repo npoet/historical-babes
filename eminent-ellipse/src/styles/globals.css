@@ -359,6 +359,10 @@ p + h3 {
   margin: 2rem 0 3rem;
 }
 
+.homepage-section {
+  margin-bottom: 6rem;
+}
+
 .search-input {
   width: 100%;
 

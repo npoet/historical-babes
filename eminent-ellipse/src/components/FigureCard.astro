@@ -1,0 +1,41 @@
+---
+import type { CollectionEntry } from "astro:content";
+import {
+  getOccupations,
+  getProfileImage,
+  getReferenceTypeData,
+  getSearchBucketData,
+  getSearchText,
+} from "../lib/figures";
+
+interface Props {
+  figure: CollectionEntry<"figures">;
+}
+
+const { figure } = Astro.props;
+---
+
+<a
+  href={`/${figure.id}`}
+  class="figure-card"
+  data-search={getSearchText(figure)}
+  data-search-buckets={getSearchBucketData(figure)}
+  data-era={figure.data.era ?? ""}
+  data-occupations={getOccupations(figure).join("|")}
+  data-themes={(figure.data.themes ?? []).join("|")}
+  data-sources={getReferenceTypeData(figure)}
+>
+  <div class="figure-image">
+    <img
+      src={getProfileImage(figure).src}
+      alt={getProfileImage(figure).alt}
+      loading="lazy"
+    />
+  </div>
+
+  <div class="figure-info">
+    <h3>{figure.data.name}</h3>
+    {figure.data.lifespan && <span>{figure.data.lifespan}</span>}
+    <small class="match-hint" aria-live="polite"></small>
+  </div>
+</a>
