@@ -57,6 +57,7 @@ const { figures } = Astro.props;
       Math.floor(Math.random() * cards.length);
 
     let userInteracting = false;
+    let carouselVisible = true;
 
     function activateCard(index) {
       cards.forEach((card) =>
@@ -69,15 +70,22 @@ const { figures } = Astro.props;
 
       activeCard.classList.add("active");
 
-      activeCard.scrollIntoView({
+      const carouselRect = carousel.getBoundingClientRect();
+      const cardRect = activeCard.getBoundingClientRect();
+      const targetLeft =
+        carousel.scrollLeft +
+        cardRect.left -
+        carouselRect.left -
+        (carousel.clientWidth - activeCard.clientWidth) / 2;
+
+      carousel.scrollTo({
+        left: targetLeft,
         behavior: "smooth",
-        inline: "center",
-        block: "nearest",
       });
     }
 
     function nextCard() {
-      if (userInteracting) return;
+      if (userInteracting || !carouselVisible) return;
 
       current = (current + 1) % cards.length;
 
@@ -87,6 +95,15 @@ const { figures } = Astro.props;
     activateCard(current);
 
     const interval = setInterval(nextCard, 4000);
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        carouselVisible = entry.isIntersecting;
+      },
+      { threshold: 0.2 }
+    );
+
+    observer.observe(carousel);
 
     carousel.addEventListener("pointerdown", () => {
       userInteracting = true;
