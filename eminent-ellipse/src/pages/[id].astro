@@ -93,6 +93,11 @@ const reasonLabels = {
 };
 const reasonLabel = (reason: string) =>
   reasonLabels[reason as keyof typeof reasonLabels] ?? reason;
+
+const nameParts = figure.data.name.trim().split(" ");
+
+const lastName = nameParts.pop() ?? "";
+const firstNames = nameParts.join(" ");
 ---
 
 <BaseLayout
@@ -106,6 +111,14 @@ const reasonLabel = (reason: string) =>
     <SiteHeader />
 
     <Separator />
+
+    <section class="landing-hero">
+        <h2>
+           {firstNames}
+            {" "}
+            <span class="hero-accent">{lastName}</span>
+        </h2>
+    </section>
 
     <div class="content-wrap">
       <img
