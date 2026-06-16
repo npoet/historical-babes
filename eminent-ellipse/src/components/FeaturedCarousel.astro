@@ -9,11 +9,15 @@ interface Props {
 const { figures } = Astro.props;
 ---
 
-<div class="featured-carousel">
-  {figures.map((figure) => (
+<div
+  class="featured-carousel"
+  id="featured-carousel"
+>
+  {figures.map((figure, index) => (
     <a
       href={`/${figure.id}`}
-      class="featured-card"
+      class={`featured-card ${index === 0 ? "active" : ""}`}
+      data-index={index}
     >
       <div class="featured-image">
         <img
@@ -36,6 +40,76 @@ const { figures } = Astro.props;
   ))}
 </div>
 
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const carousel =
+      document.getElementById("featured-carousel");
+
+    if (!carousel) return;
+
+    const cards = Array.from(
+      carousel.querySelectorAll(".featured-card")
+    );
+
+    if (!cards.length) return;
+
+    let current =
+      Math.floor(Math.random() * cards.length);
+
+    let userInteracting = false;
+
+    function activateCard(index) {
+      cards.forEach((card) =>
+        card.classList.remove("active")
+      );
+
+      const activeCard = cards[index];
+
+      if (!activeCard) return;
+
+      activeCard.classList.add("active");
+
+      activeCard.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+
+    function nextCard() {
+      if (userInteracting) return;
+
+      current = (current + 1) % cards.length;
+
+      activateCard(current);
+    }
+
+    activateCard(current);
+
+    const interval = setInterval(nextCard, 4000);
+
+    carousel.addEventListener("pointerdown", () => {
+      userInteracting = true;
+    });
+
+    carousel.addEventListener("pointerup", () => {
+      setTimeout(() => {
+        userInteracting = false;
+      }, 3000);
+    });
+
+    carousel.addEventListener("touchstart", () => {
+      userInteracting = true;
+    });
+
+    carousel.addEventListener("touchend", () => {
+      setTimeout(() => {
+        userInteracting = false;
+      }, 3000);
+    });
+  });
+</script>
+
 <style>
   .homepage-section {
     margin-bottom: 6rem;
@@ -49,31 +123,133 @@ const { figures } = Astro.props;
   }
 
   .featured-carousel {
-    display: flex;
-    gap: 1.25rem;
-    overflow-x: auto;
-    padding-bottom: 1rem;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-  }
+  display: flex;
+
+  gap: 1.5rem;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  padding: 3rem 3rem 4rem;
+
+  scroll-behavior: smooth;
+
+  scroll-snap-type: x mandatory;
+
+  scrollbar-width: none;
+
+  -ms-overflow-style: none;
+}
+
+.featured-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.featured-carousel {
+  overflow-y: hidden;
+  touch-action: pan-x;
+}
 
   .featured-card {
+    position: relative;
+
     flex: 0 0 220px;
-    scroll-snap-align: start;
+
+    scroll-snap-align: center;
+
     color: inherit;
+
+    opacity: 0.6;
+
+    transform: scale(0.88);
+
+    transition:
+      transform 0.5s ease,
+      opacity 0.5s ease;
+
+    z-index: 1;
+  }
+
+  .featured-card.active {
+    opacity: 1;
+
+    transform: scale(1.22);
+
+    z-index: 20;
+  }
+
+  .featured-card.active::before {
+  opacity: 0.25;
+
+  transform: scale(1.1);
+
+}
+
+  .featured-card.active::after {
+
+    position: absolute;
+
+    top: -14px;
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    padding: 0.3rem 0.8rem;
+
+    border-radius: 999px;
+
+    background:
+      linear-gradient(
+        90deg,
+        var(--color-pink),
+        var(--color-magenta)
+      );
+
+    color: white;
+
+    font-size: 0.7rem;
+
+    font-weight: 700;
+
+    letter-spacing: 0.08em;
+
+    box-shadow:
+      0 4px 12px rgba(255, 47, 146, 0.25);
   }
 
   .featured-image {
     overflow: hidden;
+
     background: var(--color-placeholder);
+
     aspect-ratio: 3 / 4;
+
+    border-radius: 18px;
+
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    transition:
+      border-color 0.4s ease,
+      box-shadow 0.4s ease;
   }
+
+  .featured-card.active .featured-image {
+  box-shadow:
+    0 0 0 1px rgba(255, 47, 146, 0.10),
+    0 8px 20px rgba(255, 47, 146, 0.16);
+}
 
   .featured-image img {
     width: 100%;
     height: 100%;
+
     object-fit: cover;
+
     transition: transform 0.4s ease;
+  }
+
+  .featured-card.active img {
+    transform: scale(1.03);
   }
 
   .featured-card:hover img {
@@ -81,22 +257,55 @@ const { figures } = Astro.props;
   }
 
   .featured-info {
-    padding-top: 0.75rem;
+    padding-top: 0.9rem;
+
+    text-align: center;
   }
 
   .featured-info strong {
     display: block;
+
     margin-bottom: 0.35rem;
+
+    transition:
+      color 0.4s ease,
+      transform 0.4s ease,
+      font-size 0.4s ease;
+  }
+
+  .featured-card.active .featured-info strong {
+    color: var(--color-white);
+
+    font-size: 1.15rem;
   }
 
   .featured-info span {
     color: var(--color-text-alt);
+
     font-size: 0.85rem;
+
+    transition: color 0.4s ease;
+  }
+
+  .featured-card.active .featured-info span {
+    color: var(--color-text);
   }
 
   @media (max-width: 768px) {
+    .featured-carousel {
+      padding: 2rem 1rem 3rem;
+    }
+
     .featured-card {
       flex: 0 0 150px;
+    }
+
+    .featured-card.active {
+      transform: scale(1.08);
+    }
+
+    .featured-card::before {
+      inset: -12px;
     }
 
     .section-heading {
@@ -105,4 +314,11 @@ const { figures } = Astro.props;
       gap: 0.5rem;
     }
   }
+  .featured-card {
+  will-change: transform;
+}
+
+.featured-card::before {
+  will-change: opacity, transform;
+}
 </style>
