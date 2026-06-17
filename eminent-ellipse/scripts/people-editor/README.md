@@ -6,7 +6,13 @@ The local people editor is intentionally served without a frontend build step. K
 - `server.mjs`: HTTP server, route handlers, and file-serving behavior.
 - `page.mjs`: full HTML document assembly.
 - `styles.mjs`: editor CSS.
-- `client-script.mjs`: inline browser script for form state, repeaters, enrichment, source searches, and API calls.
+- `client-script.mjs`: compatibility assembler for the inline browser script.
+- `client/api-status.mjs`: API helper, status messaging, default values, theme, and image preview state.
+- `client/form-state.mjs`: slug/lifespan sync, taxonomy suggestions, frontmatter generation, parsing, and form hydration.
+- `client/token-repeaters.mjs`: token controls plus place, event, work, story seed, reference, and related-person repeaters.
+- `client/source-search.mjs`: targeted source-search queue building, popup handling, and review-first enrichment proposal requests.
+- `client/profile-list.mjs`: profile list filtering, datalist suggestions, loading, and review readiness display.
+- `client/draft-actions.mjs`: toolbar/event wiring for save, copy, promote, demote, delete, upload, and initialization actions.
 - `healthcheck.mjs`: script extraction and syntax checks used by content QA.
 - `http.mjs`: small JSON/HTML response helpers.
 
