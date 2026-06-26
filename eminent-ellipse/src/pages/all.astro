@@ -1,8 +1,8 @@
 ---
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import SiteHeader from "../components/SiteHeader.astro";
-import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro"
+import SiteFooter from "../components/SiteFooter.astro"
 import { siteConfig } from "../site.config";
 import {
   contextLayerShortLabels,
@@ -31,11 +31,7 @@ const themes = [
   ...new Set(figures.flatMap((figure) => figure.data.themes ?? []).filter(Boolean)),
 ].sort();
 const places = [
-  ...new Set(
-    figures
-      .flatMap((figure) => figure.data.places?.map((place) => place.name) ?? [])
-      .filter(Boolean)
-  ),
+  ...new Set(figures.flatMap((figure) => figure.data.places?.map((place) => place.name) ?? []).filter(Boolean)),
 ].sort();
 
 const makeExplorationPrompt = ({
@@ -55,28 +51,22 @@ const makeExplorationPrompt = ({
 }) => ({ label, kind, query, era, theme, source });
 
 const explorationPrompts = [
-  ...themes.slice(0, 2).map((theme) =>
-    makeExplorationPrompt({
-      label: theme,
-      kind: "Theme",
-      query: theme,
-      theme,
-    })
-  ),
-  ...places.slice(0, 2).map((place) =>
-    makeExplorationPrompt({
-      label: place,
-      kind: "Place",
-      query: place,
-    })
-  ),
-  ...eras.slice(0, 2).map((era) =>
-    makeExplorationPrompt({
-      label: era,
-      kind: "Era",
-      era,
-    })
-  ),
+  ...themes.slice(0, 2).map((theme) => makeExplorationPrompt({
+    label: theme,
+    kind: "Theme",
+    query: theme,
+    theme,
+  })),
+  ...places.slice(0, 2).map((place) => makeExplorationPrompt({
+    label: place,
+    kind: "Place",
+    query: place,
+  })),
+  ...eras.slice(0, 2).map((era) => makeExplorationPrompt({
+    label: era,
+    kind: "Era",
+    era,
+  })),
   makeExplorationPrompt({
     label: "Museum/archive",
     kind: "Source",
@@ -99,11 +89,7 @@ const timelineFigures = figures
 
 const mappedPlaces = figures.flatMap((figure) =>
   figure.data.places
-    ?.filter(
-      (place) =>
-        typeof place.latitude === "number" &&
-        typeof place.longitude === "number"
-    )
+    ?.filter((place) => typeof place.latitude === "number" && typeof place.longitude === "number")
     .map((place) => ({
       figure,
       place,
@@ -161,39 +147,23 @@ const mapGroups = figures
     markers: mapMarkers.filter((marker) => marker.figure.id === figure.id),
   }))
   .filter((group) => group.markers.length > 0)
-  .sort(
-    (a, b) =>
-      b.markers.length - a.markers.length ||
-      a.figure.data.name.localeCompare(b.figure.data.name)
-  );
+  .sort((a, b) => b.markers.length - a.markers.length || a.figure.data.name.localeCompare(b.figure.data.name));
 
 const contextLayersByFigure = new Map(
   figures.map((figure) => [
     figure.id,
-    [
-      ...new Set(
-        (figure.data.contextEvents ?? []).map((event) =>
-          getContextLayer(event)
-        )
-      ),
-    ],
-  ])
+    [...new Set((figure.data.contextEvents ?? []).map((event) => getContextLayer(event)))],
+  ]),
 );
 
 const missingCoordinateItems = [
   ...figures.flatMap((figure) =>
     figure.data.places
-      ?.filter(
-        (place) =>
-          typeof place.latitude !== "number" ||
-          typeof place.longitude !== "number"
-      )
+      ?.filter((place) => typeof place.latitude !== "number" || typeof place.longitude !== "number")
       .map((place) => ({
         figure,
         label: place.name,
-        note:
-          place.note ??
-          "Place metadata is present, but coordinates have not been reviewed yet.",
+        note: place.note ?? "Place metadata is present, but coordinates have not been reviewed yet.",
       })) ?? []
   ),
   ...contextEventPlaces
@@ -211,7 +181,7 @@ const missingCoordinateItems = [
   description={`Search and filter ${figures.length} entries in the ${siteConfig.title}.`}
   canonicalPath="/all"
 >
-  <SiteHeader />
+ <SiteHeader />
 
   <section class="archive-hero">
     <div>
@@ -224,28 +194,93 @@ const missingCoordinateItems = [
   </section>
 
   <section class="search-section">
-    <div class="search-row">
-      <input
-        id="figure-search"
-        type="search"
-        placeholder="Search names, places, occupations, themes, context..."
-        class="search-input"
-        aria-label="Search historical figures"
-      />
+      <div class="search-row">
+          <input
+            id="figure-search"
+            type="search"
+            placeholder="Search names, places, occupations, themes, context..."
+            class="search-input"
+            aria-label="Search historical figures"
+          />
 
-      <button
-        type="button"
-        id="filters-toggle"
-        class="filters-toggle"
-        aria-expanded="false"
-      >
-        Show Filters
-      </button>
-    </div>
+          <button
+            type="button"
+            id="filters-toggle"
+            class="filters-toggle"
+            aria-expanded="false"
+          >
+            Show Filters
+          </button>
+        </div>
 
-    <div id="filters-panel" class="filters-panel hidden">
-      <!-- unchanged -->
-    </div>
+        <div id="filters-panel" class="filters-panel hidden">
+      <p class="search-scope-note">
+        Deep search includes figure summaries, places, source-linked context events, and research notes.
+      </p>
+
+      <div class="collection-chips" aria-label="Start somewhere">
+        <span>Start somewhere</span>
+        <button type="button" data-chip-query="scientist physicist chemist science">Scientists</button>
+        <button type="button" data-chip-query="artist writer art">Artists</button>
+        <button type="button" data-chip-query="resistance civil rights activist">Resistance</button>
+        <button type="button" data-chip-query="first pioneer">Firsts</button>
+        <button type="button" data-chip-query="war conflict">War + Conflict</button>
+        <button type="button" data-random-figure>Random Babe</button>
+        <button type="button" data-random-chip>Random trail</button>
+      </div>
+
+      <div class="collection-chips" aria-label="Keep exploring">
+        <span>Keep exploring</span>
+        {explorationPrompts.map((prompt) => (
+          <button
+            type="button"
+            data-chip-query={prompt.query}
+            data-chip-era={prompt.era}
+            data-chip-theme={prompt.theme}
+            data-chip-source={prompt.source}
+          >
+            <small>{prompt.kind}</small>
+            {prompt.label}
+          </button>
+        ))}
+      </div>
+
+  <div class="filter-grid" aria-label="Archive filters">
+        <label>
+          Era
+          <select id="era-filter">
+            <option value="">Any era</option>
+            {eras.map((era) => <option value={era}>{era}</option>)}
+          </select>
+        </label>
+
+        <label>
+          Occupation
+          <select id="occupation-filter">
+            <option value="">Any occupation</option>
+            {occupations.map((occupation) => <option value={occupation}>{occupation}</option>)}
+          </select>
+        </label>
+
+        <label>
+          Theme
+          <select id="theme-filter">
+            <option value="">Any theme</option>
+            {themes.map((theme) => <option value={theme}>{theme}</option>)}
+          </select>
+        </label>
+
+        <label>
+          Source type
+          <select id="source-filter">
+            <option value="">Any source type</option>
+            {sourceFilterOptions.map((option) => (
+              <option value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+        </div>
+</div>
   </section>
 
   <section id="figure-grid" class="figure-grid is-loading">
@@ -272,8 +307,11 @@ const missingCoordinateItems = [
         <div class="figure-info">
           <h3>{figure.data.name}</h3>
 
-          {figure.data.lifespan && <span>{figure.data.lifespan}</span>}
-
+          {
+            figure.data.lifespan && (
+              <span>{figure.data.lifespan}</span>
+            )
+          }
           <small class="match-hint" aria-live="polite"></small>
         </div>
       </a>
@@ -281,13 +319,14 @@ const missingCoordinateItems = [
   </section>
 
   <div id="no-results" class="no-results hidden">
-    <img
-      src="/images/strange-things.gif"
-      alt="No results found"
-      class="no-results-image"
-    />
-    <p>No babes match your search.</p>
-  </div>
+      <img
+        src="/images/strange-things.gif"
+        alt="No results found"
+        class="no-results-image"
+      />
+
+      <p>No babes match your search.</p>
+    </div>
 
   <SiteFooter />
 </BaseLayout>
@@ -302,7 +341,7 @@ const missingCoordinateItems = [
     opacity: 1;
     transform: translateY(0);
     transition: opacity 600ms ease, transform 600ms ease;
-    transition-delay: calc(var(--i, 0) * 45ms);
+    transition-delay: calc(var(--i, 0) * 35ms);
     will-change: transform, opacity;
   }
 </style>
@@ -310,40 +349,31 @@ const missingCoordinateItems = [
 <script>
   window.addEventListener("DOMContentLoaded", () => {
     requestAnimationFrame(() => {
-      document
-        .querySelector("#figure-grid")
-        ?.classList.remove("is-loading");
+      document.querySelector("#figure-grid")?.classList.remove("is-loading");
     });
   });
 </script>
 
 <script>
   const searchInput =
-    document.getElementById("figure-search");
-
+    document.getElementById("figure-search") as HTMLInputElement | null;
   const eraFilter =
-    document.getElementById("era-filter");
-
+    document.getElementById("era-filter") as HTMLSelectElement | null;
   const occupationFilter =
-    document.getElementById("occupation-filter");
-
+    document.getElementById("occupation-filter") as HTMLSelectElement | null;
   const themeFilter =
-    document.getElementById("theme-filter");
-
+    document.getElementById("theme-filter") as HTMLSelectElement | null;
   const sourceFilter =
-    document.getElementById("source-filter");
+    document.getElementById("source-filter") as HTMLSelectElement | null;
 
   const cards =
-    document.querySelectorAll(".figure-card");
-
+    document.querySelectorAll<HTMLElement>(".figure-card");
   const chipButtons =
-    document.querySelectorAll("[data-chip-query]");
-
+    document.querySelectorAll<HTMLButtonElement>("[data-chip-query]");
   const randomFigureButton =
-    document.querySelector("[data-random-figure]");
-
+    document.querySelector<HTMLButtonElement>("[data-random-figure]");
   const randomChipButton =
-    document.querySelector("[data-random-chip]");
+    document.querySelector<HTMLButtonElement>("[data-random-chip]");
 
   const noResults =
     document.getElementById("no-results");
@@ -352,27 +382,59 @@ const missingCoordinateItems = [
     document.getElementById("figure-grid");
 
   const applyFilters = () => {
-    const query = searchInput?.value.toLowerCase().trim() ?? "";
-    const era = eraFilter?.value ?? "";
-    const occupation = occupationFilter?.value ?? "";
-    const theme = themeFilter?.value ?? "";
-    const sourceType = sourceFilter?.value ?? "";
+    const query =
+      searchInput?.value.toLowerCase().trim() ?? "";
+    const era =
+      eraFilter?.value ?? "";
+    const occupation =
+      occupationFilter?.value ?? "";
+    const theme =
+      themeFilter?.value ?? "";
+    const sourceType =
+      sourceFilter?.value ?? "";
 
     let visible = 0;
 
     cards.forEach((card) => {
-      const search = card.dataset.search || "";
-      const occupations = card.dataset.occupations || "";
-      const themes = card.dataset.themes || "";
-      const sources = card.dataset.sources || "";
+      const search =
+        card.dataset.search || "";
+      const occupations =
+        card.dataset.occupations || "";
+      const themes =
+        card.dataset.themes || "";
+      const sources =
+        card.dataset.sources || "";
+      const sourceChoices =
+        sourceType.split("|").filter(Boolean);
+      const hint =
+        card.querySelector<HTMLElement>(".match-hint");
+      const buckets = JSON.parse(card.dataset.searchBuckets || "[]") as {
+        label: string;
+        text: string;
+      }[];
 
       const match =
         search.includes(query) &&
         (!era || card.dataset.era === era) &&
         (!occupation || occupations.split("|").includes(occupation)) &&
-        (!theme || themes.split("|").includes(theme));
+        (!theme || themes.split("|").includes(theme)) &&
+        (!sourceChoices.length || sourceChoices.some((type) => sources.split("|").includes(type)));
 
-      card.style.display = match ? "" : "none";
+      card.style.display =
+        match ? "" : "none";
+
+      if (hint) {
+        const matchedBuckets = query
+          ? buckets
+              .filter((bucket) => bucket.text.includes(query))
+              .map((bucket) => bucket.label)
+              .slice(0, 3)
+          : [];
+
+        hint.textContent = matchedBuckets.length
+          ? `Matched in ${matchedBuckets.join(", ")}`
+          : "";
+      }
 
       if (match) visible++;
     });
@@ -391,16 +453,75 @@ const missingCoordinateItems = [
     control?.addEventListener("change", applyFilters);
   });
 
+  chipButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (searchInput) {
+        searchInput.value = button.dataset.chipQuery || "";
+        searchInput.focus();
+      }
+      if (eraFilter && button.dataset.chipEra !== undefined) {
+        eraFilter.value = button.dataset.chipEra || "";
+      }
+      if (themeFilter && button.dataset.chipTheme !== undefined) {
+        themeFilter.value = button.dataset.chipTheme || "";
+      }
+      if (sourceFilter && button.dataset.chipSource !== undefined) {
+        sourceFilter.value = button.dataset.chipSource || "";
+      }
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll<HTMLElement>(".share-card").forEach((share) => {
+    share.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const card = share.closest<HTMLAnchorElement>(".figure-card");
+      const url = new URL(share.dataset.shareUrl || card?.getAttribute("href") || "/", window.location.origin);
+      const title = card?.querySelector("h3")?.textContent?.trim() || "Historical Babes";
+
+      if (navigator.share) {
+        await navigator.share({ title, url: url.toString() });
+        return;
+      }
+
+      await navigator.clipboard?.writeText(url.toString());
+      share.textContent = "Copied";
+    });
+  });
+
   randomFigureButton?.addEventListener("click", () => {
-    const visibleCards = [...cards].filter(
-      (card) => card.style.display !== "none"
-    );
-
+    const visibleCards = [...cards].filter((card) => card.style.display !== "none");
     const pool = visibleCards.length ? visibleCards : [...cards];
-
-    const chosen =
-      pool[Math.floor(Math.random() * pool.length)];
-
+    const chosen = pool[Math.floor(Math.random() * pool.length)] as HTMLAnchorElement | undefined;
     if (chosen?.href) window.location.href = chosen.href;
+  });
+
+  randomChipButton?.addEventListener("click", () => {
+    const pool = [...chipButtons].filter((button) => button.closest("[aria-label='Keep exploring']"));
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    chosen?.click();
+  });
+
+  const filtersToggle =
+    document.getElementById("filters-toggle");
+
+  const filtersPanel =
+    document.getElementById("filters-panel");
+
+  filtersToggle?.addEventListener("click", () => {
+    const isOpen =
+      !filtersPanel?.classList.contains("hidden");
+
+    filtersPanel?.classList.toggle("hidden");
+
+    filtersToggle.textContent =
+      isOpen ? "Show Filters" : "Hide Filters";
+
+    filtersToggle.setAttribute(
+      "aria-expanded",
+      String(!isOpen)
+    );
   });
 </script>
