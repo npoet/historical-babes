@@ -1,4 +1,6 @@
 ---
+import fs from "node:fs";
+import path from "node:path";
 import type { CollectionEntry } from "astro:content";
 import { getCollection, render } from "astro:content";
 
@@ -67,6 +69,43 @@ const researchTrailLinks = getResearchTrailLinks(figure);
 const profileImage = getProfileImage(figure);
 const sourceStrength = getFigureSourceStrength(figure);
 const sourceStrengthLabel = getFigureSourceStrengthLabel(figure);
+
+const profileImageFilename = path.basename(profileImage.src);
+const profileImageName = profileImageFilename.replace(/\.[^.]+$/, "");
+const altImageExtensions = ["jpg", "jpeg", "png", "webp", "gif", "avif"];
+const altImages = altImageExtensions
+  .map((extension) => {
+    const publicPath = `/images/alt-1/${profileImageName}.${extension}`;
+    const filePath = path.join(
+      process.cwd(),
+      "public",
+      "images",
+      "alt-1",
+      `${profileImageName}.${extension}`,
+    );
+
+    return fs.existsSync(filePath)
+      ? {
+          src: publicPath,
+          alt: `Alternate image of ${figure.data.name}`,
+        }
+      : null;
+  })
+  .filter(Boolean);
+
+const galleryImages = [
+  {
+    src: profileImage.src,
+    alt: profileImage.alt,
+    label: "Main image",
+  },
+  ...altImages.map((image) => ({
+    src: image.src,
+    alt: image.alt,
+    label: "Alternate image",
+  })),
+];
+
 const whatThisMeans =
   "Reviewed items have a source behind them. Approximate items are useful context, not final proof. Needs source and beta review labels mark places where the archive is still checking the trail.";
 const formatDateRange = (item: { year?: number; startYear?: number; endYear?: number }) =>
@@ -121,11 +160,36 @@ const firstNames = nameParts.join(" ");
     </section>
 
     <div class="content-wrap">
-      <img
-        class="image fade-in"
-        src={profileImage.src}
-        alt={profileImage.alt}
-      />
+      <div class="profile-image-gallery">
+        <img
+          id="profile-main-image"
+          class="image fade-in"
+          src={profileImage.src}
+          alt={profileImage.alt}
+        />
+
+        {
+          galleryImages.length > 1 && (
+            <div class="profile-image-options" aria-label="Profile image options">
+              {galleryImages.map((image, index) => (
+                <button
+                  type="button"
+                  class={`profile-image-option ${index === 0 ? "active" : ""}`}
+                  data-gallery-src={image.src}
+                  data-gallery-alt={image.alt}
+                  aria-label={`Show ${image.label.toLowerCase()} for ${figure.data.name}`}
+                >
+                  <img
+                    src={image.src}
+                    alt=""
+                    loading="lazy"
+                  />
+                </button>
+              ))}
+            </div>
+          )
+        }
+      </div>
 
       <div class="content">
         <span class="beta-label">Archive beta</span>
@@ -464,6 +528,53 @@ const firstNames = nameParts.join(" ");
     }
   }
 
+  .profile-image-gallery {
+    grid-area: img;
+  }
+
+  .profile-image-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 0.85rem;
+  }
+
+  .profile-image-option {
+    width: 58px;
+    height: 58px;
+    overflow: hidden;
+
+    border: 2px solid transparent;
+    border-radius: 10px;
+
+    background: var(--color-placeholder);
+
+    opacity: 0.72;
+
+    transition:
+      border-color 0.2s ease,
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .profile-image-option:hover,
+  .profile-image-option:focus-visible {
+    opacity: 1;
+    transform: translateY(-2px);
+    border-color: var(--color-pink);
+  }
+
+  .profile-image-option.active {
+    opacity: 1;
+    border-color: var(--color-pink);
+  }
+
+  .profile-image-option img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
   .summary {
     color: var(--color-text-alt);
     font-size: 1.05rem;
@@ -630,7 +741,7 @@ const firstNames = nameParts.join(" ");
 
 <script>
   document.querySelectorAll(".fade-in").forEach((img) => {
-    if (img.complete) {
+    if (img instanceof HTMLImageElement && img.complete) {
       img.classList.add("loaded");
     } else {
       img.addEventListener("load", () => {
@@ -638,4 +749,58 @@ const firstNames = nameParts.join(" ");
       });
     }
   });
+
+  const mainProfileImage =
+    document.getElementById("profile-main-image");
+
+  const profileImageOptions =
+    document.querySelectorAll(".profile-image-option");
+
+  if (mainProfileImage instanceof HTMLImageElement) {
+    profileImageOptions.forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextSrc =
+          button.getAttribute("data-gallery-src");
+
+        const nextAlt =
+          button.getAttribute("data-gallery-alt");
+
+        if (!nextSrc) return;
+
+        mainProfileImage.classList.remove("loaded");
+
+        mainProfileImage.addEventListener(
+          "load",
+          () => {
+            mainProfileImage.classList.add("loaded");
+          },
+          { once: true }
+        );
+
+        mainProfileImage.addEventListener(
+          "error",
+          () => {
+            mainProfileImage.classList.add("loaded");
+            console.warn(
+              "Could not load profile image:",
+              nextSrc
+            );
+          },
+          { once: true }
+        );
+
+        mainProfileImage.src = nextSrc;
+
+        if (nextAlt) {
+          mainProfileImage.alt = nextAlt;
+        }
+
+        profileImageOptions.forEach((option) => {
+          option.classList.remove("active");
+        });
+
+        button.classList.add("active");
+      });
+    });
+  }
 </script>
