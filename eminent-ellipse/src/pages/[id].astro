@@ -740,6 +740,44 @@ const firstNames = nameParts.join(" ");
 </style>
 
 <script>
+  const mainProfileImage =
+    document.getElementById("profile-main-image");
+
+  const profileImageOptions = [
+    ...document.querySelectorAll(".profile-image-option"),
+  ];
+
+  function setActiveImage(index) {
+    const button = profileImageOptions[index];
+
+    if (!(mainProfileImage instanceof HTMLImageElement) || !button) return;
+
+    const nextSrc = button.getAttribute("data-gallery-src");
+    const nextAlt = button.getAttribute("data-gallery-alt");
+
+    if (!nextSrc) return;
+
+    mainProfileImage.classList.remove("loaded");
+
+    mainProfileImage.addEventListener(
+      "load",
+      () => mainProfileImage.classList.add("loaded"),
+      { once: true }
+    );
+
+    mainProfileImage.src = nextSrc;
+
+    if (nextAlt) {
+      mainProfileImage.alt = nextAlt;
+    }
+
+    profileImageOptions.forEach((option) =>
+      option.classList.remove("active")
+    );
+
+    button.classList.add("active");
+  }
+
   document.querySelectorAll(".fade-in").forEach((img) => {
     if (img instanceof HTMLImageElement && img.complete) {
       img.classList.add("loaded");
@@ -750,57 +788,42 @@ const firstNames = nameParts.join(" ");
     }
   });
 
-  const mainProfileImage =
-    document.getElementById("profile-main-image");
-
-  const profileImageOptions =
-    document.querySelectorAll(".profile-image-option");
-
-  if (mainProfileImage instanceof HTMLImageElement) {
-    profileImageOptions.forEach((button) => {
-      button.addEventListener("click", () => {
-        const nextSrc =
-          button.getAttribute("data-gallery-src");
-
-        const nextAlt =
-          button.getAttribute("data-gallery-alt");
-
-        if (!nextSrc) return;
-
-        mainProfileImage.classList.remove("loaded");
-
-        mainProfileImage.addEventListener(
-          "load",
-          () => {
-            mainProfileImage.classList.add("loaded");
-          },
-          { once: true }
-        );
-
-        mainProfileImage.addEventListener(
-          "error",
-          () => {
-            mainProfileImage.classList.add("loaded");
-            console.warn(
-              "Could not load profile image:",
-              nextSrc
-            );
-          },
-          { once: true }
-        );
-
-        mainProfileImage.src = nextSrc;
-
-        if (nextAlt) {
-          mainProfileImage.alt = nextAlt;
-        }
-
-        profileImageOptions.forEach((option) => {
-          option.classList.remove("active");
-        });
-
-        button.classList.add("active");
-      });
+  profileImageOptions.forEach((button, index) => {
+    button.addEventListener("click", () => {
+      setActiveImage(index);
     });
-  }
+  });
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  mainProfileImage?.addEventListener("touchstart", (event) => {
+    touchStartX = event.changedTouches[0].screenX;
+    touchStartY = event.changedTouches[0].screenY;
+  });
+
+  mainProfileImage?.addEventListener("touchend", (event) => {
+    const touchEndX = event.changedTouches[0].screenX;
+    const touchEndY = event.changedTouches[0].screenY;
+
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+
+    const isHorizontalSwipe =
+      Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY);
+
+    if (!isHorizontalSwipe || profileImageOptions.length < 2) return;
+
+    const currentIndex = profileImageOptions.findIndex((option) =>
+      option.classList.contains("active")
+    );
+
+    const nextIndex =
+      deltaX < 0
+        ? (currentIndex + 1) % profileImageOptions.length
+        : (currentIndex - 1 + profileImageOptions.length) %
+          profileImageOptions.length;
+
+    setActiveImage(nextIndex);
+  });
 </script>
