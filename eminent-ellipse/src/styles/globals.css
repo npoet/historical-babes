@@ -1595,3 +1595,7 @@ p + h3 {
     width: 100%;
   }
 }
+
+.profile-image-gallery .image {
+  touch-action: pan-y;
+}
